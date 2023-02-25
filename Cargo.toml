@@ -1,0 +1,15 @@
+[package]
+name = "composer"
+version = "0.1.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+minijinja = "0.30.4"
+regex = "1.7.1"
+relative-path = "1.7.3"
+tempdir = "0.3.7"
+
+[dev-dependencies]
+#mocktopus = "0.8.0"
