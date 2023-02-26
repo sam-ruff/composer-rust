@@ -10,6 +10,13 @@ minijinja = "0.30.4"
 regex = "1.7.1"
 relative-path = "1.7.3"
 tempdir = "0.3.7"
+log = "0.4.14"
+env_logger = "0.10.0"
+pretty_env_logger = "0.4.0"
+gitignore = "1.0.7"
+random-string = "1.0.0"
+lazy_static = "1.4.0"
+test-env-log = "0.2.8"
 
 [dev-dependencies]
 #mocktopus = "0.8.0"
