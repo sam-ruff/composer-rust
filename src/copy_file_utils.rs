@@ -63,16 +63,6 @@ mod tests {
     use relative_path::RelativePath;
     use std::env::current_dir;
 
-    use lazy_static::lazy_static;
-
-    lazy_static! {
-        static ref ONCE: () = {
-            // Call your function here
-            println!("LAZY");
-            log_utils::setup_logging(LevelFilter::Trace, true);
-        };
-    }
-
     #[test]
     fn test_copy_files_simple() -> Result<(), Error> {
         log_utils::setup_logging(LevelFilter::Trace, true);
