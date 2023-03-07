@@ -1,0 +1,21 @@
+[package]
+name = "composer"
+version = "0.1.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+minijinja = "0.30.4"
+regex = "1.7.1"
+relative-path = "1.7.3"
+log = "0.4.14"
+env_logger = "0.10.0"
+pretty_env_logger = "0.4.0"
+gitignore = "1.0.7"
+random-string = "1.0.0"
+serde = { version = "1.0", features = ["derive"] }
+serde_yaml = "0.9.17"
+
+[dev-dependencies]
+assert_matches = "1.5.0"
