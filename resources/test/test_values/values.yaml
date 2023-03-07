@@ -1,0 +1,6 @@
+hello: True
+world: "string"
+foo:
+  bar: "hi"
+  nested:
+    map: "here"

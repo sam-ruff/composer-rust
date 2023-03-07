@@ -14,3 +14,8 @@ env_logger = "0.10.0"
 pretty_env_logger = "0.4.0"
 gitignore = "1.0.7"
 random-string = "1.0.0"
+serde = { version = "1.0", features = ["derive"] }
+serde_yaml = "0.9.17"
+
+[dev-dependencies]
+assert_matches = "1.5.0"

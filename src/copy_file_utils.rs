@@ -1,52 +1,64 @@
 use log::trace;
 use std::fs;
-use std::io::Error;
+
+use std::error::Error;
 use std::path::Path;
 
 pub fn copy_files_with_ignorefile(
     src: &Path,
     dest: &Path,
     ignore_file: Option<&Path>,
-) -> Result<(), Error> {
+) -> Result<(), Box<dyn Error>> {
+    // Print a log message to show which files are being copied
     trace!(
         "Copying files: Src: {}, Dest: {}",
         src.to_string_lossy(),
         dest.to_string_lossy()
     );
-    let git_ignore_file: gitignore::File;
-    let mut file: Option<&gitignore::File> = None;
-    // If an ignore file hasn't been created specify an empty one
-    if ignore_file.is_some() {
-        let ignore_path: &Path = ignore_file.unwrap();
-        trace!("Using ignorefile: {}", ignore_path.display().to_string());
-        git_ignore_file = gitignore::File::new(&ignore_path).unwrap();
-        file = Some(&git_ignore_file);
-    }
 
+    // Create a `gitignore::File` object from the ignore file, if specified
+    let exclude_file = match ignore_file {
+        Some(path) => {
+            // Print a log message to show which ignore file is being used
+            let ignore_path = path.to_string_lossy();
+            trace!("Using ignorefile: {}", ignore_path);
+            // Create a `gitignore::File` object from the ignore file
+            let exclude_file = gitignore::File::new(path)?;
+            // Return the `gitignore::File` object as an `Option`
+            Some(exclude_file)
+        }
+        None => None,
+    };
+
+    // Iterate through the entries in the source directory
     for entry in fs::read_dir(src)? {
+        // Unwrap the entry and get its path
         let entry = entry?;
-        let path = entry.path();
+        let entry_path = entry.path();
 
-        // If the entry is a directory, recursively copy its contents
-        if path.is_dir() {
+        // If the entry is a directory, recursively copy its contents to the destination
+        if entry_path.is_dir() {
             let new_dest = dest.join(entry.file_name());
             fs::create_dir_all(&new_dest)?;
-            copy_files_with_ignorefile(&path, &new_dest, ignore_file)?;
-        } else if path.is_file() {
-            // If the entry is a file and it doesn't match any of the regexes,
-            // copy it to the destination directory
-            let mut should_skip: bool = false;
-            if file.is_some() {
-                should_skip = file.unwrap().is_excluded(&path).unwrap_or(false);
+            copy_files_with_ignorefile(&entry_path, &new_dest, ignore_file)?;
+        }
+        // If the entry is a file and isn't excluded by the ignore file, copy it to the destination
+        else if entry_path.is_file() {
+            // Check if the file is excluded by the ignore file, if specified
+            let mut should_skip = false;
+            if let Some(exclude_file) = &exclude_file {
+                should_skip = exclude_file.is_excluded(&entry_path).unwrap_or(false);
             }
+            // Copy the file to the destination if it's not excluded by the ignore file
             if ignore_file.is_none() || !should_skip {
                 let new_dest = dest.join(entry.file_name());
+                // Print a log message to show which file is being copied
                 trace!(
                     "Copying file: {} to {}",
-                    &path.as_path().display().to_string(),
-                    &new_dest.as_path().display().to_string()
+                    &entry_path.display(),
+                    &new_dest.display()
                 );
-                fs::copy(&path, &new_dest)?;
+                fs::copy(&entry_path, &new_dest)?;
             }
         }
     }
@@ -64,7 +76,7 @@ mod tests {
     use std::env::current_dir;
 
     #[test]
-    fn test_copy_files_simple() -> Result<(), Error> {
+    fn test_copy_files_simple() -> Result<(), Box<dyn Error>> {
         log_utils::setup_logging(LevelFilter::Trace, true);
         println!();
         trace!("Running simple copy test.");
@@ -85,7 +97,7 @@ mod tests {
     }
 
     #[test]
-    fn test_copy_files_no_ignore() -> Result<(), Error> {
+    fn test_copy_files_no_ignore() -> Result<(), Box<dyn Error>> {
         log_utils::setup_logging(LevelFilter::Trace, true);
         println!();
         trace!("Running no ignore test.");
@@ -109,7 +121,7 @@ mod tests {
     }
 
     #[test]
-    fn test_copy_files_complex() -> Result<(), Error> {
+    fn test_copy_files_complex() -> Result<(), Box<dyn Error>> {
         log_utils::setup_logging(LevelFilter::Trace, true);
         println!();
         trace!("Running complex ignore test.");
@@ -131,7 +143,7 @@ mod tests {
         Ok(())
     }
 
-    fn setup_test_directory() -> Result<String, Error> {
+    fn setup_test_directory() -> Result<String, Box<dyn Error>> {
         let string = generate(8, "abcdefghijklmmnopqrstuvwyz");
         // Create a unique test directory
         let path_str = format!("/tmp/unit_test{}", string);

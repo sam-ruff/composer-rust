@@ -1,0 +1,3 @@
+world: "overwritten"
+foo:
+  bar: "hi2"
