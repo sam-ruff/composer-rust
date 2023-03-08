@@ -30,4 +30,5 @@ fn main() -> anyhow::Result<()> {
     let cli = Cli::parse();
     app::set_global_verbosity(cli.verbose.log_level_filter());
     cli.run()
+    // TODO implement shell completion https://docs.rs/clap_complete/4.1.4/clap_complete/
 }

@@ -1,3 +1,4 @@
+use crate::commands::cli::Cli;
 use clap::Args;
 
 #[derive(Debug, Args)]
@@ -7,8 +8,8 @@ pub struct Install {
 }
 
 impl Install {
-    pub fn exec(&self) -> anyhow::Result<()> {
-        error!("Unimplemented {:?}", self);
+    pub fn exec(&self, cli: &Cli) -> anyhow::Result<()> {
+        error!("Unimplemented Command: {:?} cli {:?}", self, cli);
         Ok(())
     }
 }

@@ -21,6 +21,7 @@ pub enum Cmd {
     Install(Install),
     /// List installed composer applications
     List(List),
+    // Hidden test function
     Test(Test),
 }
 
@@ -28,7 +29,7 @@ impl Cli {
     pub fn run(&self) -> anyhow::Result<()> {
         match &self.cmd {
             Cmd::Install(install) => {
-                install.exec()?;
+                install.exec(self)?;
             }
             Cmd::List(list) => {
                 list.exec()?;
