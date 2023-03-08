@@ -1,7 +1,6 @@
 use log::trace;
 
 use serde_yaml::{Mapping, Value};
-use std::io::Read;
 
 use std::{collections::HashMap, fs::File};
 
@@ -51,15 +50,8 @@ fn load_yaml_files(yaml_files: &Vec<&str>) -> Result<Value, Box<dyn std::error::
 
 pub fn read_yaml_file(path: &str) -> Result<Value, Box<dyn std::error::Error>> {
     trace!("Loading file: {}", path);
-    // Open the file for reading
-    let mut file = File::open(path)?;
-
-    // Read the file contents into a string
-    let mut contents = String::new();
-    file.read_to_string(&mut contents)?;
-    // Parse the YAML into a serde_yaml::Value
-    let yaml: Value = serde_yaml::from_str(&contents)?;
-    // Return the yaml file
+    let file = File::open(path)?;
+    let yaml: Value = serde_yaml::from_reader(file)?;
     Ok(yaml)
 }
 
