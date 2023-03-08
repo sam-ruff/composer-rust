@@ -25,17 +25,13 @@ fn render_template(path: &str, data: Value) -> Result<String, Box<dyn std::error
 
 #[cfg(test)]
 mod tests {
-    use crate::log_utils;
     use crate::template::render_template;
-    use log::{trace, LevelFilter};
     use relative_path::RelativePath;
     use serde_yaml::Value;
     use std::env::current_dir;
 
     #[test]
     fn test_render_basic_template() -> Result<(), Box<dyn std::error::Error>> {
-        log_utils::setup_logging(LevelFilter::Trace, true);
-        println!();
         trace!("Running test_render_basic_template.");
         let current_dir = current_dir()?;
         let template = RelativePath::new("resources/test/templates/world.jinja2")
@@ -52,8 +48,6 @@ mod tests {
 
     #[test]
     fn test_render_nested_template_with_default() -> Result<(), Box<dyn std::error::Error>> {
-        log_utils::setup_logging(LevelFilter::Trace, true);
-        println!();
         trace!("Running test_render_nested_template_with_default.");
         let current_dir = current_dir()?;
         let template = RelativePath::new("resources/test/templates/nested-default.jinja2")
@@ -73,8 +67,6 @@ mod tests {
 
     #[test]
     fn test_render_invalid_template() -> Result<(), Box<dyn std::error::Error>> {
-        log_utils::setup_logging(LevelFilter::Trace, true);
-        println!();
         trace!("Running test_render_invalid_template.");
         let current_dir = current_dir()?;
         let template = RelativePath::new("resources/test/templates/nested-default.jinja2")

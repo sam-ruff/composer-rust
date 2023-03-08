@@ -1,5 +1,3 @@
-use log::trace;
-
 use serde_yaml::{Mapping, Value};
 
 use std::{collections::HashMap, fs::File};
@@ -58,8 +56,6 @@ pub fn read_yaml_file(path: &str) -> Result<Value, Box<dyn std::error::Error>> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::log_utils;
-    use log::{trace, LevelFilter};
     use relative_path::RelativePath;
     use serde::{Deserialize, Serialize};
     use std::env::current_dir;
@@ -73,9 +69,7 @@ mod tests {
 
     #[test]
     fn test_copy_files_simple() -> Result<(), Box<dyn std::error::Error>> {
-        log_utils::setup_logging(LevelFilter::Trace, true);
-        println!();
-        trace!("Running simple load values test.");
+        trace!("Running test_copy_files_simple.");
         let current_dir = current_dir()?;
         let values_path = RelativePath::new("resources/test/test_values/values.yaml")
             .to_logical_path(&current_dir);
@@ -105,9 +99,7 @@ mod tests {
 
     #[test]
     fn test_copy_files_complex() -> Result<(), Box<dyn std::error::Error>> {
-        log_utils::setup_logging(LevelFilter::Trace, true);
-        println!();
-        trace!("Running simple load values test.");
+        trace!("Running test_copy_files_complex.");
         let current_dir = current_dir()?;
         let values_path = RelativePath::new("resources/test/test_values/values.yaml")
             .to_logical_path(&current_dir);
@@ -147,12 +139,7 @@ mod tests {
 
     #[test]
     fn test_read_yaml_file() -> Result<(), Box<dyn std::error::Error>> {
-        // Set up logging
-        log_utils::setup_logging(LevelFilter::Trace, true);
-
-        // Print a log message to show which test is running
-        println!();
-        trace!("Running read_yaml_file test.");
+        trace!("Running test_read_yaml_file.");
 
         // Get the current directory and the path to the test YAML file
         let current_dir = current_dir()?;

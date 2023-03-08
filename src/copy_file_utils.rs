@@ -1,4 +1,3 @@
-use log::trace;
 use std::fs;
 
 use std::error::Error;
@@ -69,17 +68,14 @@ pub fn copy_files_with_ignorefile(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::log_utils;
-    use log::LevelFilter;
+
     use random_string::generate;
     use relative_path::RelativePath;
     use std::env::current_dir;
 
     #[test]
     fn test_copy_files_simple() -> Result<(), Box<dyn Error>> {
-        log_utils::setup_logging(LevelFilter::Trace, true);
-        println!();
-        trace!("Running simple copy test.");
+        trace!("Running test_copy_files_simple.");
         let current_dir = current_dir()?;
         let rel_path = RelativePath::new("resources/test/simple").to_logical_path(&current_dir);
         let file_path = Path::new(&rel_path);
@@ -98,9 +94,7 @@ mod tests {
 
     #[test]
     fn test_copy_files_no_ignore() -> Result<(), Box<dyn Error>> {
-        log_utils::setup_logging(LevelFilter::Trace, true);
-        println!();
-        trace!("Running no ignore test.");
+        trace!("Running test_copy_files_no_ignore");
         let current_dir = current_dir()?;
         let rel_path = RelativePath::new("resources/test/simple").to_logical_path(&current_dir);
         let file_path = Path::new(&rel_path);
@@ -122,9 +116,7 @@ mod tests {
 
     #[test]
     fn test_copy_files_complex() -> Result<(), Box<dyn Error>> {
-        log_utils::setup_logging(LevelFilter::Trace, true);
-        println!();
-        trace!("Running complex ignore test.");
+        trace!("Running test_copy_files_complex");
         let current_dir = current_dir()?;
         let rel_path = RelativePath::new("resources/test/complex").to_logical_path(&current_dir);
         let file_path = Path::new(&rel_path);
