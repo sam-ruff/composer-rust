@@ -1,5 +1,5 @@
 pub mod copy_file_utils;
 pub mod load_values;
-mod storage;
+pub mod storage;
 pub mod template;
 pub(crate) mod walk;

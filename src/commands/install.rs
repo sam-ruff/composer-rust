@@ -1,11 +1,13 @@
 use crate::app;
-use crate::utils::copy_file_utils::get_composer_directory;
+use crate::utils::copy_file_utils::{copy_files_with_ignorefile, get_composer_directory};
 use crate::utils::load_values::{get_value_files_as_refs, load_yaml_files};
+use crate::utils::storage::{append_to_storage, ApplicationState, PersistedApplication};
 use crate::utils::walk::get_files_with_extension;
 use anyhow::anyhow;
+use anyhow::Context;
 use clap::Args;
 use std::fs;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
 #[derive(Debug, Args)]
 pub struct Install {
@@ -38,26 +40,52 @@ impl Install {
         let composer_directory = get_composer_directory()?;
         let composer_id_directory: PathBuf = composer_directory.join(install_id);
         trace!("Creating directory: '{}'", composer_id_directory.display());
-        // TODO check that composer_id_directory does not already exist
         if composer_id_directory.exists() {
             return Err(anyhow!(format!("An application with the id '{}' already exists. Did you mean to `composer upgrade {}` instead?", install_id, install_id)));
         }
+        if !self.directory.exists() {
+            return Err(anyhow!(format!(
+                "Template directory {} does not exist.",
+                &self.directory.display()
+            )));
+        }
+        // TODO check App.yaml exists at root directory + test for it
+        // TODO check template.jinja2 exists at root directory + test for it
+        // TODO check if there is an ignore file
         // Create the directory to copy the files to
         fs::create_dir_all(composer_id_directory)?;
-        // copy the files to the .composer directory  using the ID as the folder name
 
+        // Copy the files to the .composer directory  using the ID as the folder name
+        copy_files_with_ignorefile(
+            &self.directory,
+            &composer_directory,
+            // TODO do this properly
+            None,
+        )?;
         // Replace the jinja files with templated ones
         let files_to_replace = get_files_with_extension(self.directory.to_str().unwrap(), "jinja2");
         trace!("Detected templates: {}", files_to_replace.join(","));
+        // TODO Read App.yaml to get some of the needed values
+        // Create the persisted application struct TODO properly
+        let mut application = PersistedApplication {
+            id: "".to_string(),
+            version: "".to_string(),
+            state: ApplicationState::STARTING,
+        };
         // For each template replace them with actual file
 
         // Change status of app to starting
-
+        append_to_storage(&application)
+            .with_context(|| "Could not write to ~/.composer/config.json, is it writeable?")?;
         // Run docker-compose up
 
         // If it errors change the status to error
 
         // Change status of app to running
+        application.state = ApplicationState::RUNNING;
+        append_to_storage(&application)
+            .with_context(|| "Could not write to ~/.composer/config.json, is it writeable?")?;
+
         if *app::always_pull() {
             info!("Always pull is enabled. Pulling latest docker images.");
             todo!();
@@ -111,6 +139,25 @@ mod tests {
         let err = test_install_cmd.exec().unwrap_err();
         let actual_err = err.to_string();
         let expected_err = "Failed to read values YAML file: doesNotExist.yaml".to_string();
+        assert_eq!(expected_err, actual_err);
+        Ok(())
+    }
+
+    #[test]
+    fn test_failed_install_no_template_path() -> anyhow::Result<()> {
+        trace!("Running test_failed_install_no_template_path.");
+        let current_dir = current_dir()?;
+        let values_dir = RelativePath::new("resources/test/test_values/values.yaml")
+            .to_logical_path(current_dir);
+        let values_str = values_dir.to_string_lossy().to_string();
+        let test_install_cmd = Install {
+            directory: PathBuf::from("does_not_exist"),
+            id: Some("anId".to_string()),
+            value_files: vec![values_str],
+        };
+        let err = test_install_cmd.exec().unwrap_err();
+        let actual_err = err.to_string();
+        let expected_err = "Template directory does_not_exist does not exist.".to_string();
         assert_eq!(expected_err, actual_err);
         Ok(())
     }
