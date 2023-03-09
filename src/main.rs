@@ -9,6 +9,8 @@ mod load_values;
 mod template;
 
 use crate::commands::cli::Cli;
+use log::LevelFilter;
+use std::str::FromStr;
 
 use clap::Parser;
 
@@ -28,7 +30,18 @@ fn main() -> anyhow::Result<()> {
     // If its an upgrade command delete existing version
     // If its an install command install it
     let cli = Cli::parse();
-    app::set_global_verbosity(cli.verbose.log_level_filter());
-    cli.run()
+    // Set the global verbosity
+    let log_level = LevelFilter::from_str(&cli.log_level)?;
+    app::set_global_verbosity(log_level);
+    app::set_global_always_pull(cli.always_pull);
+    let result = cli.run();
+    match result {
+        Ok(_) => {}
+        Err(e) => {
+            error!("{}", e);
+            std::process::exit(1);
+        }
+    }
+    Ok(())
     // TODO implement shell completion https://docs.rs/clap_complete/4.1.4/clap_complete/
 }

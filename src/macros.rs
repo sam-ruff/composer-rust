@@ -37,7 +37,7 @@ macro_rules! define_display_macro {
     );
 }
 
-define_display_macro!(trace, Trace, underline, $);
+define_display_macro!(trace, Trace, white, $);
 define_display_macro!(debug, Debug, italic, $);
 define_display_macro!(info, Info, bold, $);
 define_display_macro!(success, Info, bright_cyan, $);

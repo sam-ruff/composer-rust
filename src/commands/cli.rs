@@ -5,14 +5,13 @@ use crate::commands::template::Template;
 use crate::commands::test::Test;
 use crate::commands::upgrade::Upgrade;
 use clap::{Parser, Subcommand};
-use clap_verbosity_flag::{InfoLevel, Verbosity};
 
 #[derive(Parser, Debug)]
 #[command(version, bin_name = "composer")]
 pub struct Cli {
-    /// Verbosity level settings, these can be chained e.g. -vvv for TRACE
-    #[clap(flatten)]
-    pub verbose: Verbosity<InfoLevel>,
+    /// Verbosity level settings, values can be INFO, ERROR, TRACE, WARN
+    #[clap(short, long, default_value = "INFO", alias = "log_level")]
+    pub log_level: String,
     /// If included as a flag, before installing/upgrading an application, all images will attempt to be pulled that are specified in the template.jinja
     #[clap(short, long)]
     pub always_pull: bool,
@@ -48,8 +47,8 @@ pub enum Cmd {
 impl Cli {
     pub fn run(&self) -> anyhow::Result<()> {
         match &self.cmd {
-            Cmd::Install(install) => install.exec(self)?,
-            Cmd::Upgrade(upgrade) => upgrade.exec(self)?,
+            Cmd::Install(install) => install.exec()?,
+            Cmd::Upgrade(upgrade) => upgrade.exec()?,
             Cmd::List(list) => list.exec()?,
             Cmd::Test(test) => test.exec()?,
             Cmd::Template(template) => template.exec()?,

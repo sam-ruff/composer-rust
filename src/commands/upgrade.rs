@@ -1,4 +1,3 @@
-use crate::commands::cli::Cli;
 use clap::Args;
 
 #[derive(Debug, Args)]
@@ -8,8 +7,8 @@ pub struct Upgrade {
 }
 
 impl Upgrade {
-    pub fn exec(&self, cli: &Cli) -> anyhow::Result<()> {
-        error!("Unimplemented Command: {:?} cli {:?}", self, cli);
+    pub fn exec(&self) -> anyhow::Result<()> {
+        error!("Unimplemented Command: {:?}", self);
         Ok(())
     }
 }

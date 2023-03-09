@@ -22,6 +22,7 @@ anyhow = "1.0.69"
 clap-verbosity-flag = "2.0.0"
 once_cell = "1.17.1"
 owo-colors = { version = "3.5.0", features = ["supports-colors"] }
+petname = "1.1.3"
 
 [dev-dependencies]
 assert_matches = "1.5.0"
