@@ -84,15 +84,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "clap_complete"
-version = "4.1.4"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "501ff0a401473ea1d4c3b125ff95506b62c5bc5768d818634195fbb7c4ad5ff4"
-dependencies = [
- "clap",
-]
-
-[[package]]
 name = "clap_derive"
 version = "4.1.8"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -116,13 +107,12 @@ dependencies = [
 
 [[package]]
 name = "composer"
-version = "0.1.0"
+version = "2.0.0"
 dependencies = [
  "anyhow",
  "assert_matches",
  "clap",
  "clap-verbosity-flag",
- "clap_complete",
  "env_logger 0.10.0",
  "gitignore",
  "log",
