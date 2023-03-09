@@ -1,13 +1,18 @@
 use std::fs;
 
-use std::error::Error;
-use std::path::Path;
+use dirs;
+use std::path::{Path, PathBuf};
+
+pub fn get_composer_directory() -> anyhow::Result<PathBuf> {
+    let home_dir = dirs::home_dir().unwrap();
+    Ok(home_dir.join(".composer"))
+}
 
 pub fn copy_files_with_ignorefile(
     src: &Path,
     dest: &Path,
     ignore_file: Option<&Path>,
-) -> Result<(), Box<dyn Error>> {
+) -> anyhow::Result<()> {
     // Print a log message to show which files are being copied
     trace!(
         "Copying files: Src: {}, Dest: {}",
@@ -74,7 +79,7 @@ mod tests {
     use std::env::current_dir;
 
     #[test]
-    fn test_copy_files_simple() -> Result<(), Box<dyn Error>> {
+    fn test_copy_files_simple() -> anyhow::Result<()> {
         trace!("Running test_copy_files_simple.");
         let current_dir = current_dir()?;
         let rel_path = RelativePath::new("resources/test/simple").to_logical_path(&current_dir);
@@ -93,7 +98,7 @@ mod tests {
     }
 
     #[test]
-    fn test_copy_files_no_ignore() -> Result<(), Box<dyn Error>> {
+    fn test_copy_files_no_ignore() -> anyhow::Result<()> {
         trace!("Running test_copy_files_no_ignore");
         let current_dir = current_dir()?;
         let rel_path = RelativePath::new("resources/test/simple").to_logical_path(&current_dir);
@@ -115,7 +120,7 @@ mod tests {
     }
 
     #[test]
-    fn test_copy_files_complex() -> Result<(), Box<dyn Error>> {
+    fn test_copy_files_complex() -> anyhow::Result<()> {
         trace!("Running test_copy_files_complex");
         let current_dir = current_dir()?;
         let rel_path = RelativePath::new("resources/test/complex").to_logical_path(&current_dir);
@@ -135,7 +140,7 @@ mod tests {
         Ok(())
     }
 
-    fn setup_test_directory() -> Result<String, Box<dyn Error>> {
+    fn setup_test_directory() -> anyhow::Result<String> {
         let string = generate(8, "abcdefghijklmmnopqrstuvwyz");
         // Create a unique test directory
         let path_str = format!("/tmp/unit_test{}", string);

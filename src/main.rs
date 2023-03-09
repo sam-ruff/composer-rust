@@ -3,10 +3,8 @@ mod macros;
 
 mod app;
 mod commands;
-mod copy_file_utils;
-mod load_values;
 
-mod template;
+mod utils;
 
 use crate::commands::cli::Cli;
 use log::LevelFilter;

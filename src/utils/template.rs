@@ -3,7 +3,7 @@ use serde_yaml::Value;
 use std::fs::File;
 use std::io::Read;
 
-fn render_template(path: &str, data: Value) -> Result<String, Box<dyn std::error::Error>> {
+fn render_template(path: &str, data: Value) -> anyhow::Result<String> {
     // Load the template file into a string
     let mut template_file = File::open(path)?;
     let mut template_string = String::new();
@@ -25,13 +25,13 @@ fn render_template(path: &str, data: Value) -> Result<String, Box<dyn std::error
 
 #[cfg(test)]
 mod tests {
-    use crate::template::render_template;
+    use crate::utils::template::render_template;
     use relative_path::RelativePath;
     use serde_yaml::Value;
     use std::env::current_dir;
 
     #[test]
-    fn test_render_basic_template() -> Result<(), Box<dyn std::error::Error>> {
+    fn test_render_basic_template() -> anyhow::Result<()> {
         trace!("Running test_render_basic_template.");
         let current_dir = current_dir()?;
         let template = RelativePath::new("resources/test/templates/world.jinja2")
@@ -47,7 +47,7 @@ mod tests {
     }
 
     #[test]
-    fn test_render_nested_template_with_default() -> Result<(), Box<dyn std::error::Error>> {
+    fn test_render_nested_template_with_default() -> anyhow::Result<()> {
         trace!("Running test_render_nested_template_with_default.");
         let current_dir = current_dir()?;
         let template = RelativePath::new("resources/test/templates/nested-default.jinja2")
@@ -66,7 +66,7 @@ mod tests {
     }
 
     #[test]
-    fn test_render_invalid_template() -> Result<(), Box<dyn std::error::Error>> {
+    fn test_render_invalid_template() -> anyhow::Result<()> {
         trace!("Running test_render_invalid_template.");
         let current_dir = current_dir()?;
         let template = RelativePath::new("resources/test/templates/nested-default.jinja2")

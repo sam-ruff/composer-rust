@@ -1,12 +1,13 @@
 use serde_yaml::{Mapping, Value};
 
+use anyhow::Context;
 use std::{collections::HashMap, fs::File};
 
 // This function loads a list of yaml files and returns a serde_yaml::Value object, that
 // object is a flatten list of the values in the yaml file with the correct values being
 // overwritten based on loading order. See the tests for an example where the world: "string"
 // value is overriden by "notString"
-fn load_yaml_files(yaml_files: &Vec<&str>) -> Result<Value, Box<dyn std::error::Error>> {
+pub fn load_yaml_files(yaml_files: &Vec<&str>) -> anyhow::Result<Value> {
     // Create an empty HashMap to store the YAML values
     let mut yaml_values = HashMap::new();
 
@@ -14,7 +15,8 @@ fn load_yaml_files(yaml_files: &Vec<&str>) -> Result<Value, Box<dyn std::error::
     for yaml_file in yaml_files {
         // Open the YAML file and
         // Deserialize the YAML file into a serde_yaml::Value object
-        let yaml: Value = read_yaml_file(yaml_file)?;
+        let yaml: Value = read_yaml_file(yaml_file)
+            .with_context(|| format!("Failed to read values YAML file: {}", yaml_file))?;
 
         // Merge the YAML values with the existing values
         if let Value::Mapping(map) = yaml {
@@ -46,7 +48,11 @@ fn load_yaml_files(yaml_files: &Vec<&str>) -> Result<Value, Box<dyn std::error::
     Ok(Value::Mapping(mapping))
 }
 
-pub fn read_yaml_file(path: &str) -> Result<Value, Box<dyn std::error::Error>> {
+pub fn get_value_files_as_refs(strings: &Vec<String>) -> Vec<&str> {
+    strings.iter().map(|s| s.as_ref()).collect()
+}
+
+pub fn read_yaml_file(path: &str) -> anyhow::Result<Value> {
     trace!("Loading file: {}", path);
     let file = File::open(path)?;
     let yaml: Value = serde_yaml::from_reader(file)?;
@@ -68,7 +74,7 @@ mod tests {
     }
 
     #[test]
-    fn test_copy_files_simple() -> Result<(), Box<dyn std::error::Error>> {
+    fn test_copy_files_simple() -> anyhow::Result<()> {
         trace!("Running test_copy_files_simple.");
         let current_dir = current_dir()?;
         let values_path = RelativePath::new("resources/test/test_values/values.yaml")
@@ -98,7 +104,7 @@ mod tests {
     }
 
     #[test]
-    fn test_copy_files_complex() -> Result<(), Box<dyn std::error::Error>> {
+    fn test_copy_files_complex() -> anyhow::Result<()> {
         trace!("Running test_copy_files_complex.");
         let current_dir = current_dir()?;
         let values_path = RelativePath::new("resources/test/test_values/values.yaml")
@@ -138,7 +144,7 @@ mod tests {
     }
 
     #[test]
-    fn test_read_yaml_file() -> Result<(), Box<dyn std::error::Error>> {
+    fn test_read_yaml_file() -> anyhow::Result<()> {
         trace!("Running test_read_yaml_file.");
 
         // Get the current directory and the path to the test YAML file
@@ -167,7 +173,7 @@ mod tests {
     }
 
     #[test]
-    fn test_read_invalid_yaml_file() -> Result<(), Box<dyn std::error::Error>> {
+    fn test_read_invalid_yaml_file() -> anyhow::Result<()> {
         // Test that `read_yaml_file()` returns an error when given an invalid path
         assert_matches!(read_yaml_file("invalid/path.yaml"), Err(_));
         Ok(())
