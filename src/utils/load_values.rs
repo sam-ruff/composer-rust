@@ -1,4 +1,4 @@
-use serde_yaml::{from_str, Mapping, Value};
+use serde_yaml::{Mapping, Value};
 
 use crate::utils::yaml_string_parser::parse_yaml_string;
 use anyhow::Context;
@@ -107,6 +107,7 @@ mod tests {
     use super::*;
     use relative_path::RelativePath;
     use serde::{Deserialize, Serialize};
+    use serde_yaml::from_str;
     use std::env::current_dir;
 
     #[derive(Debug, Serialize, Deserialize)]
