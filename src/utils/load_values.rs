@@ -7,7 +7,7 @@ use std::{collections::HashMap, fs::File};
 // This function loads a list of yaml files and returns a serde_yaml::Value object, that
 // object is a flatten list of the values in the yaml file with the correct values being
 // overwritten based on loading order. See the tests for an example where the world: "string"
-// value is overriden by "notString"
+// value is overriden by "notString", you can also manually overwrite values with --value=foo.bar=baz
 pub fn load_yaml_files(yaml_files: &Vec<&str>) -> anyhow::Result<Value> {
     // Create an empty HashMap to store the YAML values
     let mut yaml_values = HashMap::new();
@@ -16,12 +16,7 @@ pub fn load_yaml_files(yaml_files: &Vec<&str>) -> anyhow::Result<Value> {
     for yaml_file in yaml_files {
         // If the yaml_file is not a path but a x.y.z=value format string load it as a value
         if yaml_file.contains("=") {
-            yaml = parse_yaml_string(yaml_file);
-            // trace!(
-            //     "Detected manual override: {} for {}",
-            //     yaml_file,
-            //     yaml.as_str()
-            // )
+            yaml = parse_yaml_string(yaml_file)?;
         } else {
             // Open the YAML file and
             // Deserialize the YAML file into a serde_yaml::Value object
