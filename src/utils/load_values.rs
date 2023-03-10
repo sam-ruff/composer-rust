@@ -4,10 +4,47 @@ use crate::utils::yaml_string_parser::parse_yaml_string;
 use anyhow::Context;
 use std::{collections::HashMap, fs::File};
 
-// This function loads a list of yaml files and returns a serde_yaml::Value object, that
-// object is a flatten list of the values in the yaml file with the correct values being
-// overwritten based on loading order. See the tests for an example where the world: "string"
-// value is overriden by "notString", you can also manually overwrite values with --value=foo.bar=baz
+/// Loads one or more YAML files or key-value string(s) into a single `serde_yaml::Value` object.
+///
+/// This function takes a vector of YAML file paths or key-value strings in the format of "x.y.z=foo", and
+/// loads each one into a `serde_yaml::Value` object. If a key-value string is provided, it is parsed into
+/// a YAML mapping using the `parse_yaml_string` function. If a file path is provided, the file is read and
+/// deserialized into a YAML mapping using the `read_yaml_file` function. The resulting mappings are then merged
+/// into a single mapping, with any conflicting values being overwritten by the last value encountered.
+///
+/// # Errors
+///
+/// This function returns an `anyhow::Error` if any of the input files or strings cannot be loaded or parsed.
+///
+/// # Examples
+///
+/// ```
+/// use serde_yaml::Value;
+/// use anyhow::Result;
+///
+/// fn main() -> Result<()> {
+///     let yaml_files = vec![
+///         "examples/values1.yaml",
+///         "examples/values2.yaml",
+///         "abc.def.ghi=jkl",
+///     ];
+///
+///     let yaml_value = load_yaml_files(&yaml_files)?;
+///
+///     assert_eq!(yaml_value["foo"]["bar"], Value::String("baz".to_owned()));
+///     assert_eq!(yaml_value["abc"]["def"]["ghi"], Value::String("jkl".to_owned()));
+///
+///     Ok(())
+/// }
+/// ```
+///
+/// # Arguments
+///
+/// * `yaml_files` - A vector of YAML file paths or key-value strings in the format of "x.y.z=foo".
+///
+/// # Returns
+///
+/// A `serde_yaml::Value` object representing the merged YAML mappings loaded from the input files or strings.
 pub fn load_yaml_files(yaml_files: &Vec<&str>) -> anyhow::Result<Value> {
     // Create an empty HashMap to store the YAML values
     let mut yaml_values = HashMap::new();
