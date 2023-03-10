@@ -7,7 +7,7 @@ use anyhow::anyhow;
 use anyhow::Context;
 use clap::Args;
 use std::fs;
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 
 #[derive(Debug, Args)]
 pub struct Install {
@@ -50,7 +50,7 @@ impl Install {
             )));
         }
         // TODO check App.yaml exists at root directory + test for it
-        // TODO check template.jinja2 exists at root directory + test for it
+        // TODO check docker-compose.jinja2 exists at root directory + test for it
         // TODO check if there is an ignore file
         // Create the directory to copy the files to
         fs::create_dir_all(composer_id_directory)?;
@@ -72,17 +72,9 @@ impl Install {
             version: "".to_string(),
             state: ApplicationState::STARTING,
         };
-        // For each template replace them with actual file
+        // TODO For each template replace them with actual file
 
         // Change status of app to starting
-        append_to_storage(&application)
-            .with_context(|| "Could not write to ~/.composer/config.json, is it writeable?")?;
-        // Run docker-compose up
-
-        // If it errors change the status to error
-
-        // Change status of app to running
-        application.state = ApplicationState::RUNNING;
         append_to_storage(&application)
             .with_context(|| "Could not write to ~/.composer/config.json, is it writeable?")?;
 
@@ -90,6 +82,16 @@ impl Install {
             info!("Always pull is enabled. Pulling latest docker images.");
             todo!();
         }
+
+        // TODO Run docker-compose up -f docker-compose.jinja2, print stdout + stderr
+
+        // TODO If it errors change the status to error
+
+        // Change status of app to running
+        application.state = ApplicationState::RUNNING;
+        append_to_storage(&application)
+            .with_context(|| "Could not write to ~/.composer/config.json, is it writeable?")?;
+
         Ok(())
     }
 

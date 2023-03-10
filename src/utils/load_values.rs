@@ -1,5 +1,6 @@
-use serde_yaml::{Mapping, Value};
+use serde_yaml::{from_str, Mapping, Value};
 
+use crate::utils::yaml_string_parser::parse_yaml_string;
 use anyhow::Context;
 use std::{collections::HashMap, fs::File};
 
@@ -10,13 +11,23 @@ use std::{collections::HashMap, fs::File};
 pub fn load_yaml_files(yaml_files: &Vec<&str>) -> anyhow::Result<Value> {
     // Create an empty HashMap to store the YAML values
     let mut yaml_values = HashMap::new();
-
     // Iterate over each YAML file path
+    let mut yaml: Value;
     for yaml_file in yaml_files {
-        // Open the YAML file and
-        // Deserialize the YAML file into a serde_yaml::Value object
-        let yaml: Value = read_yaml_file(yaml_file)
-            .with_context(|| format!("Failed to read values YAML file: {}", yaml_file))?;
+        // If the yaml_file is not a path but a x.y.z=value format string load it as a value
+        if yaml_file.contains("=") {
+            yaml = parse_yaml_string(yaml_file);
+            // trace!(
+            //     "Detected manual override: {} for {}",
+            //     yaml_file,
+            //     yaml.as_str()
+            // )
+        } else {
+            // Open the YAML file and
+            // Deserialize the YAML file into a serde_yaml::Value object
+            yaml = read_yaml_file(yaml_file)
+                .with_context(|| format!("Failed to read values YAML file: {}", yaml_file))?;
+        }
 
         // Merge the YAML values with the existing values
         if let Value::Mapping(map) = yaml {
@@ -87,7 +98,7 @@ mod tests {
         ];
         let output = load_yaml_files(&files)?;
         // Deserialize the expected YAML contents into a struct
-        let expected_yaml: ExpectedFullValues = serde_yaml::from_str(
+        let expected_yaml: ExpectedFullValues = from_str(
             r#"---
         hello: True
         world: "notString"
@@ -121,7 +132,7 @@ mod tests {
         ];
         let output = load_yaml_files(&files)?;
         // Deserialize the expected YAML contents into a struct
-        let expected_yaml: ExpectedFullValues = serde_yaml::from_str(
+        let expected_yaml: ExpectedFullValues = from_str(
             r#"---
         hello: True
         world: "overwritten"
@@ -129,6 +140,78 @@ mod tests {
           bar: "hi2"
           nested:
             map: "here""#,
+        )?;
+        // Convert the expected YAML contents into a `serde_yaml::Value` object
+        let expected_value = serde_yaml::to_value(expected_yaml)?;
+        // Test that the loaded YAML contents match the expected YAML contents
+        assert_eq!(expected_value, output);
+        Ok(())
+    }
+
+    #[test]
+    fn test_copy_files_complex_manual_override() -> anyhow::Result<()> {
+        trace!("Running test_copy_files_complex_manual_override.");
+        let current_dir = current_dir()?;
+        let values_path = RelativePath::new("resources/test/test_values/values.yaml")
+            .to_logical_path(&current_dir);
+        let override_path = RelativePath::new("resources/test/test_values/override.yaml")
+            .to_logical_path(&current_dir);
+        let override_complex_path =
+            RelativePath::new("resources/test/test_values/override_complex.yaml")
+                .to_logical_path(&current_dir);
+        let files = vec![
+            values_path.to_str().unwrap(),
+            override_path.to_str().unwrap(),
+            override_complex_path.to_str().unwrap(),
+            "foo.bar=manual",
+        ];
+        let output = load_yaml_files(&files)?;
+        // Deserialize the expected YAML contents into a struct
+        let expected_yaml: ExpectedFullValues = from_str(
+            r#"---
+        hello: True
+        world: "overwritten"
+        foo:
+          bar: "manual"
+          nested:
+            map: "here""#,
+        )?;
+        // Convert the expected YAML contents into a `serde_yaml::Value` object
+        let expected_value = serde_yaml::to_value(expected_yaml)?;
+        // Test that the loaded YAML contents match the expected YAML contents
+        assert_eq!(expected_value, output);
+        Ok(())
+    }
+
+    #[test]
+    fn test_copy_files_complex_manual_override_multiple() -> anyhow::Result<()> {
+        trace!("Running test_copy_files_complex_manual_override_multiple.");
+        let current_dir = current_dir()?;
+        let values_path = RelativePath::new("resources/test/test_values/values.yaml")
+            .to_logical_path(&current_dir);
+        let override_path = RelativePath::new("resources/test/test_values/override.yaml")
+            .to_logical_path(&current_dir);
+        let override_complex_path =
+            RelativePath::new("resources/test/test_values/override_complex.yaml")
+                .to_logical_path(&current_dir);
+        let files = vec![
+            values_path.to_str().unwrap(),
+            override_path.to_str().unwrap(),
+            override_complex_path.to_str().unwrap(),
+            "foo.bar=manual",
+            "world=world",
+            "foo.nested.map=wow",
+        ];
+        let output = load_yaml_files(&files)?;
+        // Deserialize the expected YAML contents into a struct
+        let expected_yaml: ExpectedFullValues = from_str(
+            r#"---
+        hello: True
+        world: "world"
+        foo:
+          bar: "manual"
+          nested:
+            map: "wow""#,
         )?;
         // Convert the expected YAML contents into a `serde_yaml::Value` object
         let expected_value = serde_yaml::to_value(expected_yaml)?;
@@ -156,7 +239,7 @@ mod tests {
         let loaded_yaml = read_yaml_file(yaml_path.to_str().unwrap())?;
 
         // Deserialize the expected YAML contents into a struct
-        let expected_yaml: ExpectedYamlSimple = serde_yaml::from_str(
+        let expected_yaml: ExpectedYamlSimple = from_str(
             r#"---
         world: "overwritten"
         foo:
