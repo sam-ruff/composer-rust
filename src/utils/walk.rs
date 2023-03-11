@@ -1,5 +1,35 @@
 use walkdir::WalkDir;
 
+/// Recursively searches a directory for files with a specific file extension.
+///
+/// This function uses the `walkdir` crate to recursively traverse a directory and its subdirectories.
+/// For each file in the directory tree with a matching file extension, the function adds the file path
+/// to a vector of strings that it returns.
+///
+/// # Examples
+///
+/// ```
+/// fn main() -> anyhow::Result<()> {
+///     let files = get_files_with_extension("examples", "yaml");
+///
+///     assert_eq!(files, vec![
+///         "examples/values1.yaml".to_owned(),
+///         "examples/values2.yaml".to_owned(),
+///         "examples/subdir/values3.yaml".to_owned(),
+///     ]);
+///
+///     Ok(())
+/// }
+/// ```
+///
+/// # Arguments
+///
+/// * `dir` - The directory to search for files in.
+/// * `extension` - The file extension to search for, without the leading dot (e.g. "yaml").
+///
+/// # Returns
+///
+/// A vector of strings representing the file paths of all files in the directory tree with the given file extension.
 pub fn get_files_with_extension(dir: &str, extension: &str) -> Vec<String> {
     WalkDir::new(dir)
         .into_iter()

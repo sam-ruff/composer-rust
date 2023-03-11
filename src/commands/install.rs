@@ -1,10 +1,11 @@
 use crate::app;
 use crate::utils::copy_file_utils::{copy_files_with_ignorefile, get_composer_directory};
 use crate::utils::load_values::{get_value_files_as_refs, load_yaml_files};
-use crate::utils::storage::{append_to_storage, ApplicationState, PersistedApplication};
 use crate::utils::walk::get_files_with_extension;
 use anyhow::anyhow;
-use anyhow::Context;
+
+use crate::utils::storage::models::{ApplicationState, PersistedApplication};
+use crate::utils::storage::write_to_storage::append_to_storage;
 use clap::Args;
 use std::fs;
 use std::path::PathBuf;
@@ -68,15 +69,17 @@ impl Install {
         // TODO Read App.yaml to get some of the needed values
         // Create the persisted application struct TODO properly
         let mut application = PersistedApplication {
-            id: "".to_string(),
+            id: install_id.to_string(),
             version: "".to_string(),
+            timestamp: 0,
             state: ApplicationState::STARTING,
+            app_name: "".to_string(),
+            compose_path: "".to_string(),
         };
         // TODO For each template replace them with actual file
 
         // Change status of app to starting
-        append_to_storage(&application)
-            .with_context(|| "Could not write to ~/.composer/config.json, is it writeable?")?;
+        append_to_storage(&application)?;
 
         if *app::always_pull() {
             info!("Always pull is enabled. Pulling latest docker images.");
@@ -89,8 +92,7 @@ impl Install {
 
         // Change status of app to running
         application.state = ApplicationState::RUNNING;
-        append_to_storage(&application)
-            .with_context(|| "Could not write to ~/.composer/config.json, is it writeable?")?;
+        append_to_storage(&application)?;
 
         Ok(())
     }
@@ -116,14 +118,16 @@ mod tests {
         trace!("Running test_failed_install_no_values.");
         let current_dir = current_dir()?;
         let install_dir = RelativePath::new("resources/test/simple/").to_logical_path(&current_dir);
+        let id = "install_no_values";
         let test_install_cmd = Install {
             directory: install_dir,
-            id: Some("anId".to_string()),
+            id: Some(id.to_string()),
             value_files: vec![],
         };
         let err = test_install_cmd.exec().unwrap_err();
         let actual_err = err.to_string();
         let expected_err = "You cannot install an application with no values file. Use -v <values path> to specify values file.".to_string();
+        clean_up_test_folder(id)?;
         assert_eq!(expected_err, actual_err);
         Ok(())
     }
@@ -133,14 +137,16 @@ mod tests {
         trace!("Running test_failed_install_no_values.");
         let current_dir = current_dir()?;
         let install_dir = RelativePath::new("resources/test/simple/").to_logical_path(&current_dir);
+        let id = "test_failed_install_invalid_values";
         let test_install_cmd = Install {
             directory: install_dir,
-            id: Some("anId".to_string()),
+            id: Some(id.to_string()),
             value_files: vec![String::from("doesNotExist.yaml")],
         };
         let err = test_install_cmd.exec().unwrap_err();
         let actual_err = err.to_string();
         let expected_err = "Failed to read values YAML file: doesNotExist.yaml".to_string();
+        clean_up_test_folder(id)?;
         assert_eq!(expected_err, actual_err);
         Ok(())
     }
@@ -148,18 +154,20 @@ mod tests {
     #[test]
     fn test_failed_install_no_template_path() -> anyhow::Result<()> {
         trace!("Running test_failed_install_no_template_path.");
+        let id = "test_failed_install_no_template_path";
         let current_dir = current_dir()?;
         let values_dir = RelativePath::new("resources/test/test_values/values.yaml")
             .to_logical_path(current_dir);
         let values_str = values_dir.to_string_lossy().to_string();
         let test_install_cmd = Install {
             directory: PathBuf::from("does_not_exist"),
-            id: Some("anId".to_string()),
+            id: Some(id.to_string()),
             value_files: vec![values_str],
         };
         let err = test_install_cmd.exec().unwrap_err();
         let actual_err = err.to_string();
         let expected_err = "Template directory does_not_exist does not exist.".to_string();
+        clean_up_test_folder(id)?;
         assert_eq!(expected_err, actual_err);
         Ok(())
     }
@@ -167,7 +175,7 @@ mod tests {
     #[test]
     fn test_failed_install_existing_install() -> anyhow::Result<()> {
         trace!("Running test_failed_install_existing_install.");
-        let id = "anId".to_string();
+        let id = "test_failed_install_existing_install";
         let current_dir = current_dir()?;
         let install_dir = RelativePath::new("resources/test/simple/").to_logical_path(&current_dir);
         let values_dir = RelativePath::new("resources/test/test_values/values.yaml")
@@ -175,7 +183,7 @@ mod tests {
         let values_str = values_dir.to_string_lossy().to_string();
         let test_install_cmd = Install {
             directory: install_dir,
-            id: Some(id.clone()),
+            id: Some(id.to_string()),
             value_files: vec![values_str],
         };
         // Call exec once, so that the folder is created
@@ -183,13 +191,20 @@ mod tests {
         // Call it again, this time it should fail
         let err = test_install_cmd.exec().unwrap_err();
         let actual_err = err.to_string();
-        let expected_err = "An application with the id 'anId' already exists. Did you mean to `composer upgrade anId` instead?".to_string();
+        let expected_err = "An application with the id 'test_failed_install_existing_install' already exists. Did you mean to `composer upgrade test_failed_install_existing_install` instead?".to_string();
+        clean_up_test_folder(id)?;
+        // Then assert, if the test fails the folder is still cleaned up
+        assert_eq!(expected_err, actual_err);
+        Ok(())
+    }
+
+    fn clean_up_test_folder(id: &str) -> anyhow::Result<()> {
         // Clean up folder for test
         let composer_directory = get_composer_directory()?;
         let composer_id_directory: PathBuf = composer_directory.join(id);
-        fs::remove_dir_all(composer_id_directory)?;
-        // Then assert, if the test fails the folder is still cleaned up
-        assert_eq!(expected_err, actual_err);
+        if composer_id_directory.exists() {
+            fs::remove_dir_all(composer_id_directory)?;
+        }
         Ok(())
     }
 }

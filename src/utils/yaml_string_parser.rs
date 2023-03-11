@@ -1,5 +1,6 @@
-use anyhow::{anyhow, Context};
+use anyhow::anyhow;
 use serde_yaml::{Mapping, Value};
+use std::borrow::Cow;
 
 /// Parses a string in the format "x.y.z=foo" into its appropriate YAML representation.
 ///
@@ -41,27 +42,27 @@ use serde_yaml::{Mapping, Value};
 ///
 /// This function may panic if there is an internal error when accessing nested mappings.
 pub(crate) fn parse_yaml_string(yaml_str: &str) -> anyhow::Result<Value> {
-    let (key_path, value) = yaml_str.split_once("=").with_context(|| {
-        format!(
+    let (key_path, value) = yaml_str.split_once("=").ok_or_else(|| {
+        anyhow!(
             "Failed to split YAML string: {}, must be the format x.y.z=foo",
             yaml_str
         )
     })?;
 
     if key_path.is_empty() {
-        return Err(anyhow!(format!(
+        return Err(anyhow!(
             "Failed to find yaml key for string {}, must be the format x.y.z=foo.",
             yaml_str
-        )));
+        ));
     }
-    let keys = key_path.split(".");
 
+    let keys = key_path.split(".");
     let mut map = Mapping::new();
     let mut nested_map = &mut map;
 
-    for key in keys.clone().take(keys.clone().count() - 1) {
+    for key in keys.clone().take(keys.clone().count().saturating_sub(1)) {
         let new_map = Mapping::new();
-        nested_map.insert(Value::from(key), Value::Mapping(new_map));
+        nested_map.insert(Value::from(Cow::Borrowed(key)), Value::Mapping(new_map));
         nested_map = match nested_map.get_mut(key).unwrap() {
             Value::Mapping(map) => map,
             _ => unreachable!(),
@@ -70,7 +71,7 @@ pub(crate) fn parse_yaml_string(yaml_str: &str) -> anyhow::Result<Value> {
 
     let last_key = keys.last().unwrap();
     nested_map.insert(
-        Value::from(last_key.to_owned()),
+        Value::from(Cow::Borrowed(last_key)),
         Value::String(value.to_owned()),
     );
 

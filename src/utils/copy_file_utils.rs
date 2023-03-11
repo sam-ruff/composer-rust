@@ -1,10 +1,12 @@
 use std::fs;
 
+use anyhow::Context;
 use dirs;
 use std::path::{Path, PathBuf};
 
 pub fn get_composer_directory() -> anyhow::Result<PathBuf> {
-    let home_dir = dirs::home_dir().unwrap();
+    let home_dir = dirs::home_dir()
+        .with_context(|| "Could not get home directory, does your OS support dirs::home_dir()")?;
     Ok(home_dir.join(".composer"))
 }
 
