@@ -46,3 +46,12 @@ pub fn append_to_storage(application: &PersistedApplication) -> anyhow::Result<(
 
     Ok(())
 }
+
+pub fn delete_application_by_id(id: &str) -> anyhow::Result<()> {
+    todo!()
+}
+
+pub fn if_application_exists(id: &str) -> bool {
+    // TODO
+    return false;
+}

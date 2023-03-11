@@ -54,12 +54,12 @@ impl Install {
         // TODO check docker-compose.jinja2 exists at root directory + test for it
         // TODO check if there is an ignore file
         // Create the directory to copy the files to
-        fs::create_dir_all(composer_id_directory)?;
+        fs::create_dir_all(&composer_id_directory)?;
 
         // Copy the files to the .composer directory  using the ID as the folder name
         copy_files_with_ignorefile(
             &self.directory,
-            &composer_directory,
+            &composer_id_directory,
             // TODO do this properly
             None,
         )?;
@@ -87,6 +87,7 @@ impl Install {
         }
 
         // TODO Run docker-compose up -f docker-compose.jinja2, print stdout + stderr
+        // TODO Add a global for under test or work out mocking.
 
         // TODO If it errors change the status to error
 
@@ -109,6 +110,9 @@ mod tests {
     use crate::commands::install::Install;
 
     use crate::utils::copy_file_utils::get_composer_directory;
+    use crate::utils::storage::write_to_storage::{
+        delete_application_by_id, if_application_exists,
+    };
     use std::env::current_dir;
     use std::fs;
     use std::path::PathBuf;
@@ -202,8 +206,13 @@ mod tests {
         // Clean up folder for test
         let composer_directory = get_composer_directory()?;
         let composer_id_directory: PathBuf = composer_directory.join(id);
+        // Remove the composer directory if it exists
         if composer_id_directory.exists() {
             fs::remove_dir_all(composer_id_directory)?;
+        }
+        // Remove the persisted application from config.json if it exists
+        if if_application_exists(id) {
+            delete_application_by_id(id)?;
         }
         Ok(())
     }

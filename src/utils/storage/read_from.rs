@@ -29,3 +29,7 @@ pub fn get_all_from_storage() -> anyhow::Result<Vec<PersistedApplication>> {
 
     Ok(applications)
 }
+
+pub fn get_application_by_id() -> anyhow::Result<PersistedApplication> {
+    todo!()
+}
