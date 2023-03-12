@@ -33,7 +33,9 @@ pub fn append_to_storage(application: &PersistedApplication) -> anyhow::Result<(
     let mut applications: Vec<PersistedApplication> = if contents.trim().is_empty() {
         Vec::new()
     } else {
-        serde_json::from_str(&contents)?
+        serde_json::from_str(&contents).with_context(|| {
+            format!("Could not parse ~/.composer/config.json. Is it valid json?")
+        })?
     };
 
     let id = &application.id;
@@ -65,7 +67,7 @@ pub fn delete_application_by_id(id: &str) -> anyhow::Result<()> {
         .collect();
     if found {
         let composer_directory = get_composer_directory()?;
-        let composer_json_config_dir: std::path::PathBuf = composer_directory.join("config.json");
+        let composer_json_config_dir: PathBuf = composer_directory.join("config.json");
         let file = OpenOptions::new()
             .write(true)
             .truncate(true)
@@ -76,7 +78,10 @@ pub fn delete_application_by_id(id: &str) -> anyhow::Result<()> {
             .with_context(|| "Could not serialize JSON to config.json")?;
         Ok(())
     } else {
-        Err(anyhow!("Application with id {} not found", id))
+        Err(anyhow!(
+            "Application with id '{}' not found, could not delete. Does it exist?",
+            id
+        ))
     }
 }
 
@@ -85,6 +90,10 @@ mod tests {
     use crate::utils::storage::models::{ApplicationState, PersistedApplication};
     use crate::utils::storage::read_from::{get_application_by_id, if_application_exists};
     use crate::utils::storage::write_to_storage::{append_to_storage, delete_application_by_id};
+    use crate::utils::test_utils::{
+        backup_composer_config, create_file_with_contents, move_file_if_exists,
+    };
+
     use serial_test::serial;
 
     #[test]
@@ -118,6 +127,35 @@ mod tests {
 
     #[test]
     #[serial]
+    fn test_write_to_storage_invalid_config_json() -> anyhow::Result<()> {
+        let id = "storage_invalid_config_json";
+        let app = PersistedApplication {
+            id: id.to_string(),
+            version: "123".to_string(),
+            timestamp: 0,
+            state: ApplicationState::STARTING,
+            app_name: id.to_string(),
+            compose_path: id.to_string(),
+        };
+        // Backup config.json
+        let (composer_json_config, composer_json_config_backup) = backup_composer_config()?;
+        // Write invalid config to the config.json
+        create_file_with_contents(&composer_json_config, "invalid")?;
+        // try to append the app to storage, should fail.
+        let err = append_to_storage(&app).unwrap_err();
+        let actual_err = err.to_string();
+        let expected_err = "Could not parse ~/.composer/config.json. Is it valid json?".to_string();
+        // Before we assert restore previous config file
+        move_file_if_exists(&composer_json_config_backup, &composer_json_config)?;
+        // Assert the error string is correct
+        assert_eq!(expected_err, actual_err);
+        // Assert the app hasn't been created
+        assert_eq!(false, if_application_exists(id));
+        Ok(())
+    }
+
+    #[test]
+    #[serial]
     fn test_delete_sunny_day() -> anyhow::Result<()> {
         let id = "delete_sunny_day";
         let app = PersistedApplication {
@@ -136,6 +174,18 @@ mod tests {
         let app_exist = if_application_exists(id);
         // Assert that the app serialised and de-serialised correctly
         assert_eq!(false, app_exist);
+        Ok(())
+    }
+
+    #[test]
+    #[serial]
+    fn test_delete_does_not_exist() -> anyhow::Result<()> {
+        let id = "delete_does_not_exist";
+        // Delete the app
+        let err = delete_application_by_id(id).unwrap_err();
+        let actual_err = err.to_string();
+        let expected_err = "Application with id 'delete_does_not_exist' not found, could not delete. Does it exist?".to_string();
+        assert_eq!(expected_err, actual_err);
         Ok(())
     }
 }
