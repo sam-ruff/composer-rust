@@ -1,3 +1,6 @@
+use crate::utils::storage::read_from::{get_all_from_storage, if_application_exists};
+use crate::utils::storage::write_to_storage::delete_application_by_id;
+use anyhow::anyhow;
 use clap::Args;
 
 #[derive(Debug, Args)]
@@ -12,7 +15,20 @@ pub struct Delete {
 
 impl Delete {
     pub fn exec(&self) -> anyhow::Result<()> {
-        error!("Unimplemented Command: {:?}", self);
+        // If the all flag is set, delete all applications
+        if self.all {
+            for app in get_all_from_storage()? {
+                delete_application_by_id(&app.id)?;
+            }
+            return Ok(());
+        }
+        // Otherwise only delete the applications that have been asked
+        for id in self.ids.clone() {
+            if !if_application_exists(&id) {
+                return Err(anyhow!("Could not find application '{}' to delete it.", id));
+            }
+            delete_application_by_id(&id)?;
+        }
         Ok(())
     }
 }

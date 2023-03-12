@@ -110,14 +110,15 @@ mod tests {
     use crate::commands::install::Install;
 
     use crate::utils::copy_file_utils::get_composer_directory;
-    use crate::utils::storage::write_to_storage::{
-        delete_application_by_id, if_application_exists,
-    };
+    use crate::utils::storage::read_from::if_application_exists;
+    use crate::utils::storage::write_to_storage::delete_application_by_id;
+    use serial_test::serial;
     use std::env::current_dir;
     use std::fs;
     use std::path::PathBuf;
 
     #[test]
+    #[serial]
     fn test_failed_install_no_values() -> anyhow::Result<()> {
         trace!("Running test_failed_install_no_values.");
         let current_dir = current_dir()?;
@@ -137,6 +138,7 @@ mod tests {
     }
 
     #[test]
+    #[serial]
     fn test_failed_install_invalid_values() -> anyhow::Result<()> {
         trace!("Running test_failed_install_no_values.");
         let current_dir = current_dir()?;
@@ -156,6 +158,7 @@ mod tests {
     }
 
     #[test]
+    #[serial]
     fn test_failed_install_no_template_path() -> anyhow::Result<()> {
         trace!("Running test_failed_install_no_template_path.");
         let id = "test_failed_install_no_template_path";
@@ -177,6 +180,7 @@ mod tests {
     }
 
     #[test]
+    #[serial]
     fn test_failed_install_existing_install() -> anyhow::Result<()> {
         trace!("Running test_failed_install_existing_install.");
         let id = "test_failed_install_existing_install";
@@ -212,7 +216,8 @@ mod tests {
         }
         // Remove the persisted application from config.json if it exists
         if if_application_exists(id) {
-            delete_application_by_id(id)?;
+            // This might fail but we tried
+            let _ = delete_application_by_id(id);
         }
         Ok(())
     }

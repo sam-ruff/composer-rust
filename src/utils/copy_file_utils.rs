@@ -78,9 +78,11 @@ mod tests {
 
     use random_string::generate;
     use relative_path::RelativePath;
+    use serial_test::serial;
     use std::env::current_dir;
 
     #[test]
+    #[serial]
     fn test_copy_files_simple() -> anyhow::Result<()> {
         trace!("Running test_copy_files_simple.");
         let current_dir = current_dir()?;
@@ -100,6 +102,7 @@ mod tests {
     }
 
     #[test]
+    #[serial]
     fn test_copy_files_no_ignore() -> anyhow::Result<()> {
         trace!("Running test_copy_files_no_ignore");
         let current_dir = current_dir()?;
@@ -122,6 +125,7 @@ mod tests {
     }
 
     #[test]
+    #[serial]
     fn test_copy_files_complex() -> anyhow::Result<()> {
         trace!("Running test_copy_files_complex");
         let current_dir = current_dir()?;
