@@ -4,11 +4,13 @@ use crate::utils::load_values::{get_value_files_as_refs, load_yaml_files};
 use crate::utils::walk::get_files_with_extension;
 use anyhow::anyhow;
 
+use crate::utils::storage::app_yaml::load_app_yaml;
 use crate::utils::storage::models::{ApplicationState, PersistedApplication};
 use crate::utils::storage::write_to_storage::append_to_storage;
 use clap::Args;
 use std::fs;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
+use std::time::{SystemTime, UNIX_EPOCH};
 
 #[derive(Debug, Args)]
 pub struct Install {
@@ -50,9 +52,14 @@ impl Install {
                 &self.directory.display()
             )));
         }
-        // TODO check App.yaml exists at root directory + test for it
-        // TODO check docker-compose.jinja2 exists at root directory + test for it
-        // TODO check if there is an ignore file
+        // Check for app.yaml and docker-compose.jinja2
+        self.verify_required_files()?;
+        // Check if there is an ignore file
+        let mut ignore_file_optional: Option<&Path> = None;
+        let composer_ignore_path = self.directory.join(".composerignore");
+        if composer_id_directory.exists() {
+            ignore_file_optional = Some(composer_ignore_path.as_path());
+        }
         // Create the directory to copy the files to
         fs::create_dir_all(&composer_id_directory)?;
 
@@ -60,35 +67,37 @@ impl Install {
         copy_files_with_ignorefile(
             &self.directory,
             &composer_id_directory,
-            // TODO do this properly
-            None,
+            ignore_file_optional,
         )?;
         // Replace the jinja files with templated ones
         let files_to_replace = get_files_with_extension(self.directory.to_str().unwrap(), "jinja2");
         trace!("Detected templates: {}", files_to_replace.join(","));
-        // TODO Read App.yaml to get some of the needed values
-        // Create the persisted application struct TODO properly
+        // Read App.yaml to get some of the needed values
+        let app_yaml_path = self.directory.join("app.yaml");
+        let app_yaml = load_app_yaml(app_yaml_path)?;
+        // Create the persisted application struct
         let mut application = PersistedApplication {
             id: install_id.to_string(),
-            version: "".to_string(),
-            timestamp: 0,
+            version: app_yaml.version,
+            timestamp: self.get_current_timestamp(),
             state: ApplicationState::STARTING,
-            app_name: "".to_string(),
-            compose_path: "".to_string(),
+            app_name: app_yaml.name,
+            compose_path: self.directory.to_string_lossy().to_string(),
         };
-        // TODO For each template replace them with actual file
+        // TODO For each template render then replace them with actual file
 
         // Change status of app to starting
         append_to_storage(&application)?;
 
         if *app::always_pull() {
             info!("Always pull is enabled. Pulling latest docker images.");
-            todo!();
+            // TODO
         }
 
         // TODO Run docker-compose up -f docker-compose.jinja2, print stdout + stderr
-        // TODO Add a global for under test or work out mocking.
-
+        // TODO Add a global for under test or work out mocking. Probably call out
+        // To a function in a mod, check for testing, I know it sucks
+        self.docker_compose_up();
         // TODO If it errors change the status to error
 
         // Change status of app to running
@@ -98,8 +107,36 @@ impl Install {
         Ok(())
     }
 
+    fn verify_required_files(&self) -> anyhow::Result<()> {
+        self.verify_file_exists("app.yaml")?;
+        self.verify_file_exists("docker-compose.jinja2")?;
+        Ok(())
+    }
+
+    fn get_current_timestamp(&self) -> i64 {
+        let now = SystemTime::now();
+        let duration_since_epoch = now.duration_since(UNIX_EPOCH).expect("Time went backwards");
+
+        duration_since_epoch.as_secs() as i64
+    }
+
+    fn verify_file_exists(&self, file_name: &str) -> anyhow::Result<()> {
+        let file_path = self.directory.join(file_name);
+        if !file_path.exists() {
+            return Err(anyhow!(format!(
+                "Could not find {} at {}",
+                file_name,
+                file_path.display()
+            )));
+        }
+        Ok(())
+    }
+
     fn get_readable_id() -> String {
         petname::petname(3, "-").to_string()
+    }
+    fn docker_compose_up(&self) {
+        // TODO
     }
 }
 
@@ -110,7 +147,8 @@ mod tests {
     use crate::commands::install::Install;
 
     use crate::utils::copy_file_utils::get_composer_directory;
-    use crate::utils::storage::read_from::if_application_exists;
+    use crate::utils::storage::models::ApplicationState;
+    use crate::utils::storage::read_from::{get_application_by_id, if_application_exists};
     use crate::utils::storage::write_to_storage::delete_application_by_id;
     use serial_test::serial;
     use std::env::current_dir;
@@ -152,6 +190,31 @@ mod tests {
         let err = test_install_cmd.exec().unwrap_err();
         let actual_err = err.to_string();
         let expected_err = "Failed to read values YAML file: doesNotExist.yaml".to_string();
+        clean_up_test_folder(id)?;
+        assert_eq!(expected_err, actual_err);
+        Ok(())
+    }
+
+    #[test]
+    #[serial]
+    fn test_no_app_yaml() -> anyhow::Result<()> {
+        trace!("Running test_no_app_yaml.");
+        let current_dir = current_dir()?;
+        let install_dir =
+            RelativePath::new("resources/test/simpleNoApp/").to_logical_path(&current_dir);
+        let values_dir = RelativePath::new("resources/test/test_values/values.yaml")
+            .to_logical_path(current_dir);
+        let values_str = values_dir.to_string_lossy().to_string();
+        let app_str = install_dir.join("app.yaml").to_string_lossy().to_string();
+        let id = "test_no_app_yaml";
+        let test_install_cmd = Install {
+            directory: install_dir,
+            id: Some(id.to_string()),
+            value_files: vec![values_str],
+        };
+        let err = test_install_cmd.exec().unwrap_err();
+        let actual_err = err.to_string();
+        let expected_err = format!("Could not find app.yaml at {}", app_str);
         clean_up_test_folder(id)?;
         assert_eq!(expected_err, actual_err);
         Ok(())
@@ -220,5 +283,61 @@ mod tests {
             let _ = delete_application_by_id(id);
         }
         Ok(())
+    }
+
+    #[test]
+    #[serial]
+    fn test_install_with_correct_values_from_app_yaml() -> anyhow::Result<()> {
+        trace!("Running test_install_with_correct_values_from_app_yaml.");
+        let current_dir = current_dir()?;
+        let install_dir = RelativePath::new("resources/test/simple/").to_logical_path(&current_dir);
+        let values_dir = RelativePath::new("resources/test/test_values/values.yaml")
+            .to_logical_path(&current_dir);
+        let values_str = values_dir.to_string_lossy().to_string();
+        let id = "test_install_with_correct_values_from_app_yaml";
+        let test_install_cmd = Install {
+            directory: install_dir.clone(),
+            id: Some(id.to_string()),
+            value_files: vec![values_str],
+        };
+        test_install_cmd.exec()?;
+
+        // Read the created app
+        let app = get_application_by_id(id).unwrap();
+        // Clean up the app before assertions
+        clean_up_test_folder(id)?;
+        assert_eq!(app.id, id);
+        assert_eq!(app.version, "1.0.0");
+        assert_eq!(app.state, ApplicationState::RUNNING);
+        assert_eq!(app.app_name, "simple-test");
+        assert_eq!(app.compose_path, install_dir.to_string_lossy());
+        Ok(())
+    }
+
+    #[test]
+    fn test_verify_file_exists_happy_path() {
+        let install = Install {
+            directory: PathBuf::from("resources/test/simple/"),
+            id: None,
+            value_files: vec![],
+        };
+        let result = install.verify_file_exists("app.yaml");
+        assert!(result.is_ok());
+    }
+
+    #[test]
+    fn test_verify_file_exists_not_happy_path() {
+        let install = Install {
+            directory: PathBuf::from("resources/test/simple/"),
+            id: None,
+            value_files: vec![],
+        };
+
+        let result = install.verify_file_exists("non_existent_file.txt");
+        assert!(result.is_err());
+        assert_eq!(
+            result.unwrap_err().to_string(),
+            "Could not find non_existent_file.txt at resources/test/simple/non_existent_file.txt"
+        );
     }
 }

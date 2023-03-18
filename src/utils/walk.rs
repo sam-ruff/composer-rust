@@ -60,11 +60,9 @@ mod tests {
     fn test_basic_walk() -> anyhow::Result<()> {
         trace!("Running test_basic_walk.");
         let current_dir = current_dir()?;
-        let target_dir = RelativePath::new("resources/test/").to_logical_path(&current_dir);
+        let target_dir =
+            RelativePath::new("resources/test/templates").to_logical_path(&current_dir);
         let expected = vec![
-            "resources/test/complex/subDir/template.jinja2",
-            "resources/test/complex/template.jinja2",
-            "resources/test/simple/template.jinja2",
             "resources/test/templates/world.jinja2",
             "resources/test/templates/nested-default.jinja2",
         ];

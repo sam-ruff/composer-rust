@@ -29,7 +29,7 @@ pub enum Cmd {
     #[clap(alias = "u", alias = "update")]
     Upgrade(Upgrade),
     /// List installed composer applications
-    #[clap(alias = "ls")]
+    #[clap(alias = "ls", alias = "ps")]
     List(List),
     /// Prints the output docker_compose.yaml once the values have been applied. Can
     ///   be used to produce a compose for use outside of the composer install
@@ -47,6 +47,7 @@ pub enum Cmd {
 impl Cli {
     pub fn run(&self) -> anyhow::Result<()> {
         match &self.cmd {
+            // TODO if exec fails set ID to failing
             Cmd::Install(install) => install.exec()?,
             Cmd::Upgrade(upgrade) => upgrade.exec()?,
             Cmd::List(list) => list.exec()?,

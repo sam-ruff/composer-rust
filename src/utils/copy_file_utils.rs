@@ -93,7 +93,7 @@ mod tests {
         let ignore_path = rel_path.join(Path::new(".composerignore"));
         copy_files_with_ignorefile(file_path, temp_path, Some(&ignore_path)).unwrap();
         // Assert the template has been copied
-        assert_file_exists(temp_path, "template.jinja2", true);
+        assert_file_exists(temp_path, "docker-compose.jinja2", true);
         // Assert that ignore me hasn't been copied
         assert_file_exists(temp_path, ".ignoreme", false);
         // Remove the test dir
@@ -112,7 +112,7 @@ mod tests {
         let temp_path = Path::new(&path_str);
         copy_files_with_ignorefile(file_path, temp_path, Option::None).unwrap();
         // Assert the template has been copied
-        assert_file_exists(temp_path, "template.jinja2", true);
+        assert_file_exists(temp_path, "docker-compose.jinja2", true);
         // Assert that ignore me hasn't been copied
         assert_file_exists(temp_path, ".ignoreme", true);
         // Remove the test dir
