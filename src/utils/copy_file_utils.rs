@@ -1,14 +1,20 @@
-use log::trace;
 use std::fs;
 
-use std::error::Error;
-use std::path::Path;
+use anyhow::Context;
+use dirs;
+use std::path::{Path, PathBuf};
+
+pub fn get_composer_directory() -> anyhow::Result<PathBuf> {
+    let home_dir = dirs::home_dir()
+        .with_context(|| "Could not get home directory, does your OS support dirs::home_dir()")?;
+    Ok(home_dir.join(".composer"))
+}
 
 pub fn copy_files_with_ignorefile(
     src: &Path,
     dest: &Path,
     ignore_file: Option<&Path>,
-) -> Result<(), Box<dyn Error>> {
+) -> anyhow::Result<()> {
     // Print a log message to show which files are being copied
     trace!(
         "Copying files: Src: {}, Dest: {}",
@@ -69,17 +75,16 @@ pub fn copy_files_with_ignorefile(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::log_utils;
-    use log::LevelFilter;
+
     use random_string::generate;
     use relative_path::RelativePath;
+    use serial_test::serial;
     use std::env::current_dir;
 
     #[test]
-    fn test_copy_files_simple() -> Result<(), Box<dyn Error>> {
-        log_utils::setup_logging(LevelFilter::Trace, true);
-        println!();
-        trace!("Running simple copy test.");
+    #[serial]
+    fn test_copy_files_simple() -> anyhow::Result<()> {
+        trace!("Running test_copy_files_simple.");
         let current_dir = current_dir()?;
         let rel_path = RelativePath::new("resources/test/simple").to_logical_path(&current_dir);
         let file_path = Path::new(&rel_path);
@@ -88,7 +93,7 @@ mod tests {
         let ignore_path = rel_path.join(Path::new(".composerignore"));
         copy_files_with_ignorefile(file_path, temp_path, Some(&ignore_path)).unwrap();
         // Assert the template has been copied
-        assert_file_exists(temp_path, "template.jinja2", true);
+        assert_file_exists(temp_path, "docker-compose.jinja2", true);
         // Assert that ignore me hasn't been copied
         assert_file_exists(temp_path, ".ignoreme", false);
         // Remove the test dir
@@ -97,10 +102,9 @@ mod tests {
     }
 
     #[test]
-    fn test_copy_files_no_ignore() -> Result<(), Box<dyn Error>> {
-        log_utils::setup_logging(LevelFilter::Trace, true);
-        println!();
-        trace!("Running no ignore test.");
+    #[serial]
+    fn test_copy_files_no_ignore() -> anyhow::Result<()> {
+        trace!("Running test_copy_files_no_ignore");
         let current_dir = current_dir()?;
         let rel_path = RelativePath::new("resources/test/simple").to_logical_path(&current_dir);
         let file_path = Path::new(&rel_path);
@@ -108,7 +112,7 @@ mod tests {
         let temp_path = Path::new(&path_str);
         copy_files_with_ignorefile(file_path, temp_path, Option::None).unwrap();
         // Assert the template has been copied
-        assert_file_exists(temp_path, "template.jinja2", true);
+        assert_file_exists(temp_path, "docker-compose.jinja2", true);
         // Assert that ignore me hasn't been copied
         assert_file_exists(temp_path, ".ignoreme", true);
         // Remove the test dir
@@ -121,10 +125,9 @@ mod tests {
     }
 
     #[test]
-    fn test_copy_files_complex() -> Result<(), Box<dyn Error>> {
-        log_utils::setup_logging(LevelFilter::Trace, true);
-        println!();
-        trace!("Running complex ignore test.");
+    #[serial]
+    fn test_copy_files_complex() -> anyhow::Result<()> {
+        trace!("Running test_copy_files_complex");
         let current_dir = current_dir()?;
         let rel_path = RelativePath::new("resources/test/complex").to_logical_path(&current_dir);
         let file_path = Path::new(&rel_path);
@@ -143,7 +146,7 @@ mod tests {
         Ok(())
     }
 
-    fn setup_test_directory() -> Result<String, Box<dyn Error>> {
+    fn setup_test_directory() -> anyhow::Result<String> {
         let string = generate(8, "abcdefghijklmmnopqrstuvwyz");
         // Create a unique test directory
         let path_str = format!("/tmp/unit_test{}", string);
