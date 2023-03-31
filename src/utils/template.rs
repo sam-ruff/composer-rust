@@ -3,7 +3,7 @@ use serde_yaml::Value;
 use std::fs::File;
 use std::io::Read;
 
-fn render_template(path: &str, data: Value) -> anyhow::Result<String> {
+pub fn render_template(path: &str, data: Value) -> anyhow::Result<String> {
     // Load the template file into a string
     let mut template_file = File::open(path)?;
     let mut template_string = String::new();
