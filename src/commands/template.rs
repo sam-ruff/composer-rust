@@ -5,8 +5,8 @@ use crate::utils::template::render_template;
 
 use clap::Args;
 
-use std::path::PathBuf;
 use std::fs::write;
+use std::path::PathBuf;
 
 #[derive(Debug, Args)]
 pub struct Template {
@@ -18,11 +18,10 @@ pub struct Template {
     pub output_file: String,
 }
 
-
 impl Template {
     pub fn exec(&self) -> anyhow::Result<()> {
         trace!("Command: {:?}", self);
-    
+
         if !&self.template.exists() {
             return Err(anyhow!(
                 "You have not provided a template file. Use -t <template path> to specify a template file."
@@ -42,20 +41,20 @@ impl Template {
             "Consolidated values: \n```\n{}\n```\n",
             serde_yaml::to_string(&consolidated_values).unwrap()
         );
-        
 
-        let rendered_template: Result<String, anyhow::Error> = render_template(&self.template.to_str().unwrap(), consolidated_values);
+        let template_path_str = self
+            .template
+            .to_str()
+            .expect("Could not get path to template file.");
+
+        let rendered_template = render_template(template_path_str, consolidated_values)?;
 
         if self.output_file.is_empty() {
             // Print output to console
-            println!("{}", &rendered_template.unwrap());
+            println!("{}", &rendered_template);
         } else {
             // Output to file
-            let result: Result<(), std::io::Error> = write(&self.output_file, &rendered_template.unwrap());
-            match result {
-                Ok(_) => {},
-                Err(err) => return Err(anyhow!(err))
-            }
+            write(&self.output_file, &rendered_template)?;
         }
 
         Ok(())
@@ -64,8 +63,8 @@ impl Template {
 
 #[cfg(test)]
 mod tests {
-    use tempfile::{tempdir, TempDir};
     use relative_path::RelativePath;
+    use tempfile::{tempdir, TempDir};
 
     use crate::commands::template::Template;
     use serial_test::serial;
@@ -78,13 +77,16 @@ mod tests {
         trace!("Running test_template_without_output_file.");
 
         let current_dir: PathBuf = current_dir()?;
-        let values_path: PathBuf = RelativePath::new("resources/test/test_values/values.yaml").to_logical_path(&current_dir);
-        let template_path: PathBuf = RelativePath::new("resources/test/simple/docker-compose.jinja2").to_logical_path(&current_dir);
+        let values_path: PathBuf = RelativePath::new("resources/test/test_values/values.yaml")
+            .to_logical_path(&current_dir);
+        let template_path: PathBuf =
+            RelativePath::new("resources/test/simple/docker-compose.jinja2")
+                .to_logical_path(&current_dir);
 
         let test_template_cmd: Template = Template {
             template: template_path.to_owned(),
             value_files: vec![values_path.to_str().unwrap().to_owned()],
-            output_file: String::new()
+            output_file: String::new(),
         };
 
         test_template_cmd.exec()?;
@@ -99,14 +101,17 @@ mod tests {
 
         let temp_dir: TempDir = tempdir()?;
         let current_dir: PathBuf = current_dir()?;
-        let values_path: PathBuf = RelativePath::new("resources/test/test_values/values.yaml").to_logical_path(&current_dir);
-        let template_path: PathBuf = RelativePath::new("resources/test/simple/docker-compose.jinja2").to_logical_path(&current_dir);
+        let values_path: PathBuf = RelativePath::new("resources/test/test_values/values.yaml")
+            .to_logical_path(&current_dir);
+        let template_path: PathBuf =
+            RelativePath::new("resources/test/simple/docker-compose.jinja2")
+                .to_logical_path(&current_dir);
         let output_path: PathBuf = temp_dir.path().join("output.txt");
 
         let test_template_cmd: Template = Template {
             template: template_path.to_owned(),
             value_files: vec![values_path.to_str().unwrap().to_owned()],
-            output_file: output_path.to_str().unwrap().to_owned()
+            output_file: output_path.to_str().unwrap().to_owned(),
         };
 
         test_template_cmd.exec()?;
@@ -124,7 +129,7 @@ mod tests {
         let test_template_cmd: Template = Template {
             template: PathBuf::new(),
             value_files: vec![],
-            output_file: String::new()
+            output_file: String::new(),
         };
 
         let err = test_template_cmd.exec().err().unwrap();
@@ -142,12 +147,14 @@ mod tests {
         trace!("Running test_template_pass.");
 
         let current_dir: PathBuf = current_dir()?;
-        let template_path: PathBuf = RelativePath::new("resources/test/simple/docker-compose.jinja2").to_logical_path(&current_dir);
+        let template_path: PathBuf =
+            RelativePath::new("resources/test/simple/docker-compose.jinja2")
+                .to_logical_path(&current_dir);
 
         let test_template_cmd: Template = Template {
             template: template_path.to_owned(),
             value_files: vec![],
-            output_file: String::new()
+            output_file: String::new(),
         };
 
         let err = test_template_cmd.exec().err().unwrap();

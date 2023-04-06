@@ -18,7 +18,14 @@ pub fn render_template(path: &str, data: Value) -> anyhow::Result<String> {
     let ctx = minijinja::value::Value::from_serializable(&data);
 
     // Render the template with the input data
-    let rendered = template.render(&ctx)?;
+    let rendered = template.render(&ctx).map_err(|e| {
+        anyhow::anyhow!(
+            "Failed to render template {}: due to an error in the template. Error: {}",
+            path,
+            e
+        )
+    })?;
+
     // Return the rendered string
     Ok(rendered)
 }
