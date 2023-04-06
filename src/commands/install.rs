@@ -150,9 +150,6 @@ impl Install {
     fn get_readable_id() -> String {
         petname::petname(3, "-").to_string()
     }
-    fn docker_compose_up(&self) {
-        // TODO
-    }
 }
 
 #[cfg(test)]

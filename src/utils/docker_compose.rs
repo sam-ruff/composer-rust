@@ -55,7 +55,18 @@ pub fn compose_down(path: &str, application_id: &str) {
 }
 
 pub fn is_compose_installed() -> bool {
-    unbuffered_command(&["docker-compose", "version"]) == 0
+    silent_run(&["docker-compose", "version"])
+        .status()
+        .unwrap()
+        .success()
+}
+
+pub fn silent_run(args: &[&str]) -> Command {
+    trace!("Running command: {:?}", args);
+    let mut cmd = Command::new(args[0]);
+    cmd.args(&args[1..]);
+    cmd.stdout(Stdio::piped()).stderr(Stdio::piped());
+    cmd
 }
 
 pub fn compose_pull(path: &str) {
