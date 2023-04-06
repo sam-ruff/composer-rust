@@ -62,7 +62,7 @@ impl Template {
     }
 }
 
-
+#[cfg(test)]
 mod tests {
     use tempfile::{tempdir, TempDir};
     use relative_path::RelativePath;
