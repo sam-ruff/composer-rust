@@ -47,7 +47,6 @@ pub enum Cmd {
 impl Cli {
     pub fn run(&self) -> anyhow::Result<()> {
         match &self.cmd {
-            // TODO if exec fails set ID to failing
             Cmd::Install(install) => install.exec()?,
             Cmd::Upgrade(upgrade) => upgrade.exec()?,
             Cmd::List(list) => list.exec()?,

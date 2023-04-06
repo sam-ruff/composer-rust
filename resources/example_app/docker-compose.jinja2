@@ -1,0 +1,20 @@
+version: "3.9"
+services:
+  example:
+    image: "busybox"
+    container_name: example_container
+    command: [
+      "echo",
+      "{{ message }}"
+    ]
+  example-config:
+    image: "busybox"
+    container_name: example_container_config
+    command: [
+      "cat",
+      "/dev/config.json"
+    ]
+    volumes:
+      - type: bind
+        source: "./config.jinja2"
+        target: "/dev/config.json"

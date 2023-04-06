@@ -1,14 +1,17 @@
 use crate::app;
 use crate::utils::copy_file_utils::{copy_files_with_ignorefile, get_composer_directory};
 use crate::utils::load_values::{get_value_files_as_refs, load_yaml_files};
-use crate::utils::walk::get_files_with_extension;
+use crate::utils::walk::{get_files_with_extension, get_files_with_name};
 use anyhow::anyhow;
 
+use crate::utils::docker_compose::{compose_pull, compose_up};
 use crate::utils::storage::app_yaml::load_app_yaml;
 use crate::utils::storage::models::{ApplicationState, PersistedApplication};
 use crate::utils::storage::write_to_storage::append_to_storage;
+use crate::utils::template::render_template;
 use clap::Args;
 use std::fs;
+use std::fs::{remove_file, write};
 use std::path::{Path, PathBuf};
 use std::time::{SystemTime, UNIX_EPOCH};
 
@@ -69,9 +72,7 @@ impl Install {
             &composer_id_directory,
             ignore_file_optional,
         )?;
-        // Replace the jinja files with templated ones
-        let files_to_replace = get_files_with_extension(self.directory.to_str().unwrap(), "jinja2");
-        trace!("Detected templates: {}", files_to_replace.join(","));
+
         // Read App.yaml to get some of the needed values
         let app_yaml_path = self.directory.join("app.yaml");
         let app_yaml = load_app_yaml(app_yaml_path)?;
@@ -84,21 +85,35 @@ impl Install {
             app_name: app_yaml.name,
             compose_path: self.directory.to_string_lossy().to_string(),
         };
-        // TODO For each template render then replace them with actual file
+        // For each template render them, then replace them with the actual file
+        // Replace the jinja files with templated ones
+        let files_to_replace =
+            get_files_with_extension(composer_id_directory.to_str().unwrap(), "jinja2");
+        trace!("Detected templates: {}", files_to_replace.join(","));
 
+        for file_path in files_to_replace {
+            trace!("Replacing {}", file_path);
+            // Get the rendered template
+            let rendered_content = render_template(&file_path, consolidated_values.clone())?;
+            // Replace the existing file
+            remove_file(&file_path)?;
+            write(file_path, rendered_content.as_bytes())?;
+        }
         // Change status of app to starting
         append_to_storage(&application)?;
 
         if *app::always_pull() {
             info!("Always pull is enabled. Pulling latest docker images.");
-            // TODO
+            compose_pull(&composer_id_directory.to_str().unwrap());
         }
-
-        // TODO Run docker-compose up -f docker-compose.jinja2, print stdout + stderr
-        // TODO Add a global for under test or work out mocking. Probably call out
-        // To a function in a mod, check for testing, I know it sucks
-        self.docker_compose_up();
-        // TODO If it errors change the status to error
+        // Find all docker-compose.jinja2 files
+        let all_compose_files = get_files_with_name(
+            composer_id_directory.to_str().unwrap(),
+            "docker-compose.jinja2",
+        );
+        for compose_file in all_compose_files {
+            compose_up(&compose_file, install_id);
+        }
 
         // Change status of app to running
         application.state = ApplicationState::RUNNING;
@@ -134,9 +149,6 @@ impl Install {
 
     fn get_readable_id() -> String {
         petname::petname(3, "-").to_string()
-    }
-    fn docker_compose_up(&self) {
-        // TODO
     }
 }
 

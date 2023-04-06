@@ -76,6 +76,11 @@ pub fn delete_application_by_id(id: &str) -> anyhow::Result<()> {
         let writer = BufWriter::new(file);
         serde_json::to_writer(writer, &new_applications)
             .with_context(|| "Could not serialize JSON to config.json")?;
+        let app_directory = composer_directory.join(id);
+        // TODO write a unit test that covers this
+        if app_directory.exists() {
+            fs::remove_dir_all(app_directory)?;
+        }
         Ok(())
     } else {
         Err(anyhow!(

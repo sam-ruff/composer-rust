@@ -48,6 +48,23 @@ pub fn get_files_with_extension(dir: &str, extension: &str) -> Vec<String> {
         .collect()
 }
 
+// TODO needs unit tests
+pub fn get_files_with_name(dir: &str, name: &str) -> Vec<String> {
+    WalkDir::new(dir)
+        .into_iter()
+        .filter_map(|entry| {
+            if let Ok(entry) = entry {
+                if entry.file_type().is_file() {
+                    if entry.file_name().to_string_lossy() == name {
+                        return Some(entry.path().to_string_lossy().into_owned());
+                    }
+                }
+            }
+            None
+        })
+        .collect()
+}
+
 #[cfg(test)]
 mod tests {
     use crate::utils::walk::get_files_with_extension;
