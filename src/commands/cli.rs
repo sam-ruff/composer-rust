@@ -4,6 +4,8 @@ use crate::commands::list::List;
 use crate::commands::template::Template;
 use crate::commands::test::Test;
 use crate::commands::upgrade::Upgrade;
+use crate::utils::docker_compose::is_compose_installed;
+use anyhow::anyhow;
 use clap::{Parser, Subcommand};
 
 #[derive(Parser, Debug)]
@@ -46,6 +48,11 @@ pub enum Cmd {
 
 impl Cli {
     pub fn run(&self) -> anyhow::Result<()> {
+        if !is_compose_installed() {
+            return Err(anyhow!(
+                "Docker-compose is not installed. Please install it before using composer."
+            ));
+        }
         match &self.cmd {
             // TODO if exec fails set ID to failing
             Cmd::Install(install) => install.exec()?,
