@@ -2,6 +2,41 @@ use crate::utils::storage::models::PersistedApplication;
 use crate::utils::storage::read_from::get_all_from_storage;
 use clap::Args;
 
+use chrono_humanize::HumanTime;
+use std::time::{SystemTime, UNIX_EPOCH};
+
+fn print_applications(apps: &[PersistedApplication], quiet: bool) {
+    if quiet {
+        for app in apps {
+            println!("{}", app.id);
+        }
+    } else {
+        for app in apps {
+            let time_delta = SystemTime::now()
+                .duration_since(UNIX_EPOCH)
+                .expect("Time went backwards")
+                .as_secs() as i64
+                - app.timestamp;
+            let duration = chrono::Duration::seconds(time_delta);
+
+            let time_formatted = HumanTime::from(duration).to_text_en(
+                chrono_humanize::Accuracy::Rough,
+                chrono_humanize::Tense::Present,
+            );
+
+            info_no_bold!(
+                "{app_id:<15} {version:<15} {time:<15} {status:<15} {app_name:<25} {compose_name:<20}",
+                app_id = app.id,
+                version = app.version,
+                time = time_formatted,
+                status = app.state,
+                app_name = app.app_name,
+                compose_name = app.compose_path
+            );
+        }
+    }
+}
+
 #[derive(Debug, Args)]
 pub struct List {
     /// Prints only the ids of the installed applications
@@ -12,19 +47,18 @@ pub struct List {
 impl List {
     pub fn exec(&self) -> anyhow::Result<()> {
         let all_applications: Vec<PersistedApplication> = get_all_from_storage()?;
-        if !self.quiet && !all_applications.is_empty() {
-            info!("Installed Apps:")
+        if !self.quiet {
+            info!(
+                "{app_id:<15} {version:<15} {time:<15} {status:<15} {app_name:<25} {compose_name:<20}",
+                app_id = "APP ID",
+                version = "VERSION",
+                time = "UPTIME",
+                status = "STATUS",
+                app_name = "APP NAME",
+                compose_name = "COMPOSE"
+            );
         }
-        if !self.quiet && all_applications.is_empty() {
-            info!("No applications installed.")
-        }
-        for app in all_applications.iter() {
-            if self.quiet {
-                println!("{}", app.id)
-            } else {
-                info!("App: {:#?}", app)
-            }
-        }
+        print_applications(&all_applications, self.quiet);
         Ok(())
     }
 }

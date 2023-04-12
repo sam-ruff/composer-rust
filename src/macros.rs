@@ -40,6 +40,7 @@ macro_rules! define_display_macro {
 define_display_macro!(trace, Trace, white, $);
 define_display_macro!(debug, Debug, italic, $);
 define_display_macro!(info, Info, bold, $);
+define_display_macro!(info_no_bold, Info, white, $);
 define_display_macro!(success, Info, bright_cyan, $);
 define_display_macro!(waiting, Info, bright_magenta, $);
 define_display_macro!(warn, Warn, bright_yellow, $);
