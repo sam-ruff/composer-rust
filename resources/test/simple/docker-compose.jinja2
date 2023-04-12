@@ -1,1 +1,8 @@
-Hello, {{ phrase }}
+version: "3.9"
+services:
+  example:
+    image: "busybox"
+    command: [
+      "echo",
+      "{{ world }}"
+    ]

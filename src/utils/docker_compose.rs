@@ -1,6 +1,10 @@
 use crate::utils::storage::models::ApplicationState::ERROR;
 use crate::utils::storage::update_storage::update_application_state;
+use serde::{Deserialize, Serialize};
+use serde_yaml::Value;
+use std::fs;
 use std::io::{BufRead, BufReader};
+use std::path::Path;
 use std::process::{Command, Stdio};
 
 pub fn unbuffered_command(command_line_args: &[&str]) -> i32 {
@@ -28,7 +32,18 @@ fn log_subprocess_output(pipe: impl std::io::Read) {
     }
 }
 
-pub fn compose_up(path: &str, application_id: &str) {
+pub fn compose_up(path: &str, application_id: &str) -> anyhow::Result<()> {
+    // A compose file is invalid if its empty or invalid yaml
+    check_compose_is_valid(path)?;
+    if compose_has_no_services(path) {
+        // This is a valid use-case for sub-compose files
+        // they should be skipped if no services are created
+        trace!(
+            "Compose file {} has been skipped due to having no services defined.",
+            path
+        );
+        return Ok(());
+    }
     trace!("[EXEC] docker-compose up {}", path);
     let exit_code = unbuffered_command(&["docker-compose", "-f", path, "up", "-d"]);
 
@@ -37,6 +52,58 @@ pub fn compose_up(path: &str, application_id: &str) {
             .expect("Could not update application state.");
         error!("docker-compose up has failed for app {}", application_id);
         std::process::exit(exit_code);
+    }
+    Ok(())
+}
+
+// Compose files are invalid if they are empty, invalid yaml
+fn check_compose_is_valid(compose_path: &str) -> anyhow::Result<()> {
+    // Check if the path exists
+    if !Path::new(compose_path).exists() {
+        return Err(anyhow::anyhow!(
+            "The provided compose file path '{}' does not exist.",
+            compose_path
+        ));
+    }
+
+    // Read the contents of the file
+    let contents = fs::read_to_string(compose_path)?;
+
+    // Check if the file is empty
+    if contents.trim().is_empty() {
+        return Err(anyhow::anyhow!(
+            "The provided compose file '{}' is empty.",
+            compose_path
+        ));
+    }
+
+    // Check if the file is valid YAML
+    serde_yaml::from_str::<Value>(&contents).expect(&*format!(
+        "The provided compose file '{}' is not a valid YAML file",
+        compose_path
+    ));
+    Ok(())
+}
+
+#[derive(Debug, PartialEq, Serialize, Deserialize)]
+struct Compose {
+    services: Option<Vec<String>>,
+}
+
+fn compose_has_no_services(compose_path: &str) -> bool {
+    let compose_content = match fs::read_to_string(compose_path) {
+        Ok(content) => content,
+        Err(_) => return false, // Error reading file, return false
+    };
+
+    let compose: Result<Compose, serde_yaml::Error> = serde_yaml::from_str(&compose_content);
+
+    match compose {
+        Ok(compose_obj) => match compose_obj.services {
+            Some(services) => services.is_empty(),
+            None => true,
+        },
+        Err(_) => false, // Error parsing YAML, return false
     }
 }
 

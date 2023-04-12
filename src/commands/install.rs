@@ -10,6 +10,7 @@ use crate::utils::storage::models::{ApplicationState, PersistedApplication};
 use crate::utils::storage::write_to_storage::append_to_storage;
 use crate::utils::template::render_template;
 use clap::Args;
+
 use std::fs;
 use std::fs::{remove_file, write};
 use std::path::{Path, PathBuf};
@@ -85,6 +86,8 @@ impl Install {
             app_name: app_yaml.name,
             compose_path: self.directory.to_string_lossy().to_string(),
         };
+        // Change status of app to starting
+        append_to_storage(&application)?;
         // For each template render them, then replace them with the actual file
         // Replace the jinja files with templated ones
         let files_to_replace =
@@ -99,8 +102,6 @@ impl Install {
             remove_file(&file_path)?;
             write(file_path, rendered_content.as_bytes())?;
         }
-        // Change status of app to starting
-        append_to_storage(&application)?;
 
         if *app::always_pull() {
             info!("Always pull is enabled. Pulling latest docker images.");
@@ -112,7 +113,7 @@ impl Install {
             "docker-compose.jinja2",
         );
         for compose_file in all_compose_files {
-            compose_up(&compose_file, install_id);
+            compose_up(&compose_file, install_id)?;
         }
 
         // Change status of app to running
