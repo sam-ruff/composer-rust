@@ -45,7 +45,8 @@ pub fn compose_up(path: &str, application_id: &str) -> anyhow::Result<()> {
         return Ok(());
     }
     trace!("[EXEC] docker-compose up {}", path);
-    let exit_code = unbuffered_command(&["docker-compose", "-f", path, "up", "-d"]);
+    let exit_code =
+        unbuffered_command(&["docker-compose", "-f", path, "up", "-d", "--remove-orphans"]);
 
     if exit_code != 0 {
         update_application_state(application_id, ERROR)
@@ -109,7 +110,16 @@ fn compose_has_no_services(compose_path: &str) -> bool {
 
 pub fn compose_down(path: &str, application_id: &str) {
     trace!("[EXEC] docker-compose down {}", path);
-    let exit_code = unbuffered_command(&["docker-compose", "-f", path, "down"]);
+    if compose_has_no_services(path) {
+        // This is a valid use-case for sub-compose files
+        // they should be skipped if no services are created
+        trace!(
+            "Compose down for file {} has been skipped due to having no services defined.",
+            path
+        );
+        return;
+    }
+    let exit_code = unbuffered_command(&["docker-compose", "-f", path, "down", "--remove-orphans"]);
 
     if exit_code != 0 {
         update_application_state(application_id, ERROR)
