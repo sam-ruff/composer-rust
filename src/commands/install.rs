@@ -31,18 +31,6 @@ impl Install {
         trace!("Command: {:?}", self);
         let readable_id = &Self::get_readable_id();
         let install_id: &String = self.id.as_ref().unwrap_or(readable_id);
-        info!("Installing application with ID: {}", install_id);
-        if self.value_files.is_empty() {
-            return Err(anyhow!(
-                "You cannot install an application with no values file. Use -v <values path> to specify values file."
-            ));
-        }
-        let values = get_value_files_as_refs(&self.value_files);
-        let consolidated_values = load_yaml_files(&values)?;
-        trace!(
-            "Consolidated values: \n```\n{}\n```\n",
-            serde_yaml::to_string(&consolidated_values).unwrap()
-        );
         // Ensure the .composer directory exists
         let composer_directory = get_composer_directory()?;
         let composer_id_directory: PathBuf = composer_directory.join(install_id);
@@ -50,101 +38,16 @@ impl Install {
         if composer_id_directory.exists() {
             return Err(anyhow!(format!("An application with the id '{}' already exists. Did you mean to `composer upgrade {}` instead?", install_id, install_id)));
         }
-        if !self.directory.exists() {
-            return Err(anyhow!(format!(
-                "Template directory {} does not exist.",
-                &self.directory.display()
-            )));
-        }
-        // Check for app.yaml and docker-compose.jinja2
-        self.verify_required_files()?;
-        // Check if there is an ignore file
-        let mut ignore_file_optional: Option<&Path> = None;
-        let composer_ignore_path = self.directory.join(".composerignore");
-        if composer_id_directory.exists() {
-            ignore_file_optional = Some(composer_ignore_path.as_path());
-        }
-        // Create the directory to copy the files to
-        fs::create_dir_all(&composer_id_directory)?;
+        info!("Installing application with ID: {}", install_id);
 
-        // Copy the files to the .composer directory  using the ID as the folder name
-        copy_files_with_ignorefile(
-            &self.directory,
+        add_application(
+            install_id,
             &composer_id_directory,
-            ignore_file_optional,
+            false,
+            &self.value_files,
+            &self.directory,
         )?;
 
-        // Read App.yaml to get some of the needed values
-        let app_yaml_path = self.directory.join("app.yaml");
-        let app_yaml = load_app_yaml(app_yaml_path)?;
-        // Create the persisted application struct
-        let mut application = PersistedApplication {
-            id: install_id.to_string(),
-            version: app_yaml.version,
-            timestamp: self.get_current_timestamp(),
-            state: ApplicationState::STARTING,
-            app_name: app_yaml.name,
-            compose_path: self.directory.to_string_lossy().to_string(),
-        };
-        // Change status of app to starting
-        append_to_storage(&application)?;
-        // For each template render them, then replace them with the actual file
-        // Replace the jinja files with templated ones
-        let files_to_replace =
-            get_files_with_extension(composer_id_directory.to_str().unwrap(), "jinja2");
-        trace!("Detected templates: {}", files_to_replace.join(","));
-
-        for file_path in files_to_replace {
-            trace!("Replacing {}", file_path);
-            // Get the rendered template
-            let rendered_content = render_template(&file_path, consolidated_values.clone())?;
-            // Replace the existing file
-            remove_file(&file_path)?;
-            write(file_path, rendered_content.as_bytes())?;
-        }
-
-        if *app::always_pull() {
-            info!("Always pull is enabled. Pulling latest docker images.");
-            compose_pull(&composer_id_directory.to_str().unwrap());
-        }
-        // Find all docker-compose.jinja2 files
-        let all_compose_files = get_files_with_name(
-            composer_id_directory.to_str().unwrap(),
-            "docker-compose.jinja2",
-        );
-        for compose_file in all_compose_files {
-            compose_up(&compose_file, install_id)?;
-        }
-
-        // Change status of app to running
-        application.state = ApplicationState::RUNNING;
-        append_to_storage(&application)?;
-
-        Ok(())
-    }
-
-    fn verify_required_files(&self) -> anyhow::Result<()> {
-        self.verify_file_exists("app.yaml")?;
-        self.verify_file_exists("docker-compose.jinja2")?;
-        Ok(())
-    }
-
-    fn get_current_timestamp(&self) -> i64 {
-        let now = SystemTime::now();
-        let duration_since_epoch = now.duration_since(UNIX_EPOCH).expect("Time went backwards");
-
-        duration_since_epoch.as_secs() as i64
-    }
-
-    fn verify_file_exists(&self, file_name: &str) -> anyhow::Result<()> {
-        let file_path = self.directory.join(file_name);
-        if !file_path.exists() {
-            return Err(anyhow!(format!(
-                "Could not find {} at {}",
-                file_name,
-                file_path.display()
-            )));
-        }
         Ok(())
     }
 
@@ -153,11 +56,128 @@ impl Install {
     }
 }
 
+fn get_current_timestamp() -> i64 {
+    let now = SystemTime::now();
+    let duration_since_epoch = now.duration_since(UNIX_EPOCH).expect("Time went backwards");
+
+    duration_since_epoch.as_secs() as i64
+}
+
+fn verify_required_files(directory: &PathBuf) -> anyhow::Result<()> {
+    verify_file_exists("app.yaml", directory)?;
+    verify_file_exists("docker-compose.jinja2", directory)?;
+    Ok(())
+}
+
+fn verify_file_exists(file_name: &str, directory: &PathBuf) -> anyhow::Result<()> {
+    let file_path = directory.join(file_name);
+    if !file_path.exists() {
+        return Err(anyhow!(format!(
+            "Could not find {} at {}",
+            file_name,
+            file_path.display()
+        )));
+    }
+    Ok(())
+}
+
+pub fn add_application(
+    install_id: &String,
+    composer_id_directory: &PathBuf,
+    is_upgrade: bool,
+    values_files: &Vec<String>,
+    directory: &PathBuf,
+) -> anyhow::Result<()> {
+    if values_files.is_empty() {
+        let mut correct_word = "install";
+        if is_upgrade {
+            correct_word = "upgrade";
+        }
+        return Err(anyhow!(
+                "You cannot {} an application with no values file. Use -v <values path> to specify values file.", correct_word
+            ));
+    }
+
+    let values = get_value_files_as_refs(values_files);
+    let consolidated_values = load_yaml_files(&values)?;
+    trace!(
+        "Consolidated values: \n```\n{}\n```\n",
+        serde_yaml::to_string(&consolidated_values).unwrap()
+    );
+
+    if !directory.exists() {
+        return Err(anyhow!(format!(
+            "Template directory {} does not exist.",
+            &directory.display()
+        )));
+    }
+    // Check for app.yaml and docker-compose.jinja2
+    verify_required_files(directory)?;
+    // Check if there is an ignore file
+    let mut ignore_file_optional: Option<&Path> = None;
+    let composer_ignore_path = directory.join(".composerignore");
+    if composer_id_directory.exists() {
+        ignore_file_optional = Some(composer_ignore_path.as_path());
+    }
+    // Create the directory to copy the files to
+    fs::create_dir_all(&composer_id_directory)?;
+
+    // Copy the files to the .composer directory  using the ID as the folder name
+    copy_files_with_ignorefile(directory, &composer_id_directory, ignore_file_optional)?;
+
+    // Read App.yaml to get some of the needed values
+    let app_yaml_path = directory.join("app.yaml");
+    let app_yaml = load_app_yaml(app_yaml_path)?;
+    // Create the persisted application struct
+    let mut application = PersistedApplication {
+        id: install_id.to_string(),
+        version: app_yaml.version,
+        timestamp: get_current_timestamp(),
+        state: ApplicationState::STARTING,
+        app_name: app_yaml.name,
+        compose_path: directory.to_string_lossy().to_string(),
+    };
+    // Change status of app to starting
+    append_to_storage(&application)?;
+    // For each template render them, then replace them with the actual file
+    // Replace the jinja files with templated ones
+    let files_to_replace =
+        get_files_with_extension(composer_id_directory.to_str().unwrap(), "jinja2");
+    trace!("Detected templates: {}", files_to_replace.join(","));
+
+    for file_path in files_to_replace {
+        trace!("Replacing {}", file_path);
+        // Get the rendered template
+        let rendered_content = render_template(&file_path, consolidated_values.clone())?;
+        // Replace the existing file
+        remove_file(&file_path)?;
+        write(file_path, rendered_content.as_bytes())?;
+    }
+
+    if *app::always_pull() {
+        info!("Always pull is enabled. Pulling latest docker images.");
+        compose_pull(&composer_id_directory.to_str().unwrap());
+    }
+    // Find all docker-compose.jinja2 files
+    let all_compose_files = get_files_with_name(
+        composer_id_directory.to_str().unwrap(),
+        "docker-compose.jinja2",
+    );
+    for compose_file in all_compose_files {
+        compose_up(&compose_file, install_id)?;
+    }
+
+    // Change status of app to running
+    application.state = ApplicationState::RUNNING;
+    append_to_storage(&application)?;
+    Ok(())
+}
+
 #[cfg(test)]
 mod tests {
     use relative_path::RelativePath;
 
-    use crate::commands::install::Install;
+    use crate::commands::install::{verify_file_exists, Install};
 
     use crate::utils::copy_file_utils::get_composer_directory;
     use crate::utils::storage::models::ApplicationState;
@@ -334,7 +354,7 @@ mod tests {
             id: None,
             value_files: vec![],
         };
-        let result = install.verify_file_exists("app.yaml");
+        let result = verify_file_exists("app.yaml", &install.directory);
         assert!(result.is_ok());
     }
 
@@ -346,7 +366,7 @@ mod tests {
             value_files: vec![],
         };
 
-        let result = install.verify_file_exists("non_existent_file.txt");
+        let result = verify_file_exists("non_existent_file.txt", &install.directory);
         assert!(result.is_err());
         assert_eq!(
             result.unwrap_err().to_string(),
