@@ -29,6 +29,9 @@ dirs = "4.0.0"
 prettyprint = "0.8.1"
 serde_json = "1.0.94"
 serial_test = "1.0.0"
+log4rs = "1.0"
+chrono = "0.4"
+chrono-humanize = "0.2.2"
 
 [dev-dependencies]
 assert_matches = "1.5.0"

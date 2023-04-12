@@ -16,3 +16,16 @@ pub enum ApplicationState {
     RUNNING,
     ERROR,
 }
+
+use std::fmt;
+
+impl fmt::Display for ApplicationState {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let state_str = match self {
+            ApplicationState::STARTING => "STARTING",
+            ApplicationState::RUNNING => "RUNNING",
+            ApplicationState::ERROR => "ERROR",
+        };
+        write!(f, "{:<15}", state_str)
+    }
+}
