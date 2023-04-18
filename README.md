@@ -63,7 +63,7 @@ Composer relies on several configuration files for templating and application se
 It will also template any other files that have extensions `.jinja2` <br/>
 
 ## Example
-In the resources/example_app directory, you'll find a sample application with the necessary configuration files. To install this application, run: 
+In the `resources/example_app` directory, you'll find a sample application with the necessary configuration files. To install this application, run: 
 ```bash
 composer install resources/example_app -v resources/example_app/values.yaml -i example
 ```
