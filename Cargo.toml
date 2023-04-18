@@ -6,6 +6,14 @@ authors = ["Sam Ruff - sam@bytesquid.com", "Ryan Brogden - ryan@bytesquid.com"]
 readme = "README.md"
 resolver = "2"
 
+[profile.release]
+# Link time optimisations https://doc.rust-lang.org/cargo/reference/profiles.html#lto
+lto = true
+# Strip debugging symbols https://doc.rust-lang.org/cargo/reference/profiles.html#strip
+strip = true
+# Reduce build parallisation but faster compiled binary https://doc.rust-lang.org/cargo/reference/profiles.html#codegen-units
+codegen-units = 1
+
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 [dependencies]
 regex = "1.7.1"
