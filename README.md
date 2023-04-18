@@ -26,6 +26,12 @@ https://github.com/ByteSquid/composer-rust/releases
 
 ## Building from Source
 Note: You will need rust installed also for this.
+https://www.rust-lang.org/tools/install 
+or 
+```bash
+curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
+```
+Then get the composer source:
 ```bash
 git clone https://github.com/ByteSquid/composer-rust.git
 cd composer-rust
