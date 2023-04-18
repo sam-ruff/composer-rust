@@ -1,10 +1,24 @@
 #!/bin/bash
+set -e
+
 mkdir .tmp-install
 cd .tmp-install || exit
+
 # Grab the latest release
-curl -s https://api.github.com/repos/bytesquid/composer-rust/releases/latest | grep "browser_download_url.*gnu.tar.gz" | cut -d : -f 2,3 | tr -d \" | wget -qi
+latest_release_url=$(curl -s https://api.github.com/repos/bytesquid/composer-rust/releases/latest | grep "browser_download_url.*gnu.tar.gz" | cut -d : -f 2,3 | tr -d \")
+if [[ -z "$latest_release_url" ]]; then
+  echo "Failed to fetch the latest release URL. Exiting."
+  exit 1
+fi
+
+# Download the latest release
+echo "Downloading the latest release from: $latest_release_url"
+wget -q --show-progress --retry-connrefused --waitretry=1 --timeout=20 "$latest_release_url"
+
 # Untar it
-tar -xzf *.tar.gz
+tar_file=$(find . -name "*.tar.gz")
+tar -xzf "$tar_file"
+
 # Move it to PATH
 # Install the composer binary for the current user
 echo "Installing the composer binary for the current user..."
@@ -20,3 +34,7 @@ else
   echo "Installation failed. Please check the error messages above." >&2
   exit 1
 fi
+
+# Clean up
+cd ..
+rm -rf .tmp-install
