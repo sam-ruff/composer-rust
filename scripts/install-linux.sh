@@ -17,6 +17,7 @@ tar_file="composer_rust_latest.tar.gz"
 wget -q --show-progress --retry-connrefused --waitretry=1 --timeout=20 -O "$tar_file" "$latest_release_url"
 
 # Untar it
+echo "Untar $tar_file"
 tar -xzf "$tar_file"
 
 # Move it to PATH
