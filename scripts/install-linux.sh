@@ -6,7 +6,7 @@ if [ -d ".tmp-install" ]; then
   rm -rf .tmp-install
 fi
 
-mkdir .tmp-install
+mkdir .tmp-install || true
 cd .tmp-install || exit
 
 # Grab the latest release
