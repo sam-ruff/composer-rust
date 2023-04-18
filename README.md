@@ -73,7 +73,7 @@ composer list
 ```
 You should see something like this:
 ```bash
- composer list
+> composer list
 APP ID          VERSION         UPTIME          STATUS          APP NAME                  COMPOSE             
 example         1.0.0           now             RUNNING         simple-app                resources/example_app
 ```
