@@ -21,7 +21,7 @@ echo "Downloading the latest release from: $latest_release_url"
 tar_file="composer_rust_latest.tar.gz"
 retries=5
 for i in $(seq 1 $retries); do
-  wget -q --show-progress --retry-connrefused --waitretry=1 -O "$tar_file" "https://$latest_release_url" && break || {
+  wget -q -O "$tar_file" "https://$latest_release_url" && break || {
     echo "Attempt $i of $retries failed. Retrying..."
     if [ "$i" -eq "$retries" ]; then
       echo "All attempts to download failed. Exiting."
