@@ -1,6 +1,11 @@
 #!/bin/bash
 set -e
 
+# Remove .tmp-install directory if it exists
+if [ -d ".tmp-install" ]; then
+  rm -rf .tmp-install
+fi
+
 mkdir .tmp-install
 cd .tmp-install || exit
 
