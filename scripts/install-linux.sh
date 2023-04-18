@@ -19,7 +19,7 @@ fi
 # Download the latest release
 echo "Downloading the latest release from: $latest_release_url"
 tar_file="composer_rust_latest.tar.gz"
-wget -q --show-progress --retry-connrefused --waitretry=1 --timeout=20 -O "$tar_file" "$latest_release_url" || true
+wget -v --show-progress --retry-connrefused --waitretry=1 --timeout=20 -O "$tar_file" "$latest_release_url"
 
 # Untar it
 echo "Untar $tar_file"
