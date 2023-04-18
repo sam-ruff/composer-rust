@@ -10,7 +10,7 @@ mkdir .tmp-install
 cd .tmp-install || exit
 
 # Grab the latest release
-latest_release_url=$(curl -s https://api.github.com/repos/bytesquid/composer-rust/releases/latest | grep "browser_download_url.*gnu.tar.gz" | cut -d : -f 2,3 | tr -d \")
+latest_release_url=$(curl -s https://api.github.com/repos/bytesquid/composer-rust/releases/latest | grep "browser_download_url.*gnu.tar.gz" | cut -d : -f 2,3 | tr -d \" | xargs echo -n)
 if [[ -z "$latest_release_url" ]]; then
   echo "Failed to fetch the latest release URL. Exiting."
   exit 1
@@ -21,7 +21,7 @@ echo "Downloading the latest release from: $latest_release_url"
 tar_file="composer_rust_latest.tar.gz"
 retries=5
 for i in $(seq 1 $retries); do
-  wget -O "$tar_file" "https://$latest_release_url" && break || {
+  wget -O "$tar_file" "$latest_release_url" && break || {
     echo "Attempt $i of $retries failed. Retrying..."
     if [ "$i" -eq "$retries" ]; then
       echo "All attempts to download failed. Exiting."
