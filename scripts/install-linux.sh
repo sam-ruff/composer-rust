@@ -23,7 +23,7 @@ main() {
   tar_file="composer_rust_latest.tar.gz"
   retries=5
   for i in $(seq 1 $retries); do
-    if wget -O "$tar_file" "$latest_release_url"; then
+    if wget -q -O "$tar_file" "$latest_release_url"; then
       echo "Download successful."
       break
     else
