@@ -25,6 +25,8 @@ jobs:
     strategy:
       matrix:
         include:
+          - target: aarch64-unknown-linux-gnu
+            os: ubuntu-latest
           - target: x86_64-unknown-linux-musl
             os: ubuntu-latest
             build_tool: cross
