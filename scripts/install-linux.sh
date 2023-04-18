@@ -62,4 +62,4 @@ main() {
   rm -rf .tmp-install
 }
 
-main()
+main
