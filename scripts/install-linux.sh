@@ -13,11 +13,10 @@ fi
 
 # Download the latest release
 echo "Downloading the latest release from: $latest_release_url"
-wget -q --show-progress --retry-connrefused --waitretry=1 --timeout=20 "$latest_release_url"
+tar_file="composer_rust_latest.tar.gz"
+wget -q --show-progress --retry-connrefused --waitretry=1 --timeout=20 -O "$tar_file" "$latest_release_url"
 
 # Untar it
-tar_file=$(find . -name "*.tar.gz")
-echo "Decompressing $tar_file"
 tar -xzf "$tar_file"
 
 # Move it to PATH
