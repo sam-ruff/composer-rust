@@ -9,8 +9,8 @@ Composer is a command line tool similar to Helm, but designed for Docker Compose
 - Automatically pull images before installing or upgrading an application (optional)
 
 ## Prerequisites
-Docker
-Docker Compose
+- Docker
+- Docker Compose
 
 ## Getting Started
 To install Composer, run the following command for Linux:
