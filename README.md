@@ -41,7 +41,7 @@ git clone https://github.com/ByteSquid/composer-rust.git
 cd composer-rust
 cargo build --release
 ```
-Copy the binary to a location in your PATH, e.g., /usr/local/bin:
+Copy the binary to a location in your PATH, e.g. `/usr/local/bin`:
 ```bash
 sudo cp target/release/composer /usr/local/bin
 ```
