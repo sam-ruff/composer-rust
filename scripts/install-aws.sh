@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # Set environment variables
-export S3_URL="https://my-public-bucket.s3.amazonaws.com/composer"
+export S3_URL="https://composer-releases.s3.eu-west-2.amazonaws.com/composer"
 export BINARY_NAME="composer"
 export INSTALL_DIR="$HOME/.local/bin"
 
