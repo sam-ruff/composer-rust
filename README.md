@@ -62,7 +62,7 @@ composer [global flags] command [flags] [arguments]
 * `upgrade, u, update`: Upgrade an existing Composer application. This is equivalent to running docker-compose up again. Existing services will remain, and only the differences will be applied.
 * `list, ls, ps`: List installed Composer applications.
 * `template, t`: Print the output docker-compose.yaml after values have been applied. This can be used to produce a Compose file for use outside of the Composer install environment or for debugging purposes.
-* `delete, d`, uninstall: Delete a given application(s) (by ID unless using --all), removing it completely.
+* `delete, d, uninstall`: Delete a given application(s) (by ID unless using --all), removing it completely.
 
 
 ## Configuration
