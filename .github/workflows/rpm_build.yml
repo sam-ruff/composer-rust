@@ -68,26 +68,20 @@ jobs:
           PACKAGECLOUD-DISTRIB: rpm_any/rpm_any
           PACKAGECLOUD-REPO: composer-production
           PACKAGECLOUD-TOKEN: ${{ secrets.PACKAGECLOUD_TOKEN }}
-
+      - id: latestRelease
+        uses: pozetroninc/github-action-get-latest-release@master
+        with:
+          repository: ${{ github.repository }}
+          token: ${{ secrets.GITHUB_TOKEN }}
       - name: Get Release URL and upload RPM
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          # Get the tag for the release from the previous workflow
-          TAG_NAME=$(echo ${{  github.ref_name }} | sed 's/refs\/tags\///g')
-          echo $TAG_NAME || return 0
-          # Get the release ID
-          RELEASE_ID=$(curl --silent \
-                           --header "Authorization: token $GITHUB_TOKEN" \
-                           --header "Accept: application/vnd.github+json" \
-                           "https://api.github.com/repos/$GITHUB_REPOSITORY/releases/tags/$TAG_NAME" | \
-                     jq '.id')
-          echo $RELEASE_ID || return 0
           # Upload the RPM artifact to the release
           for rpm_file in $(ls /home/runner/rpmbuild/RPMS/**/*.rpm); do
             curl --progress-bar \
                  --header "Authorization: token $GITHUB_TOKEN" \
                  --header "Content-Type: application/octet-stream" \
                  --data-binary @"$rpm_file" \
-                 --request POST "https://uploads.github.com/repos/$GITHUB_REPOSITORY/releases/$RELEASE_ID/assets?name=$(basename $rpm_file)"
+                 --request POST "https://uploads.github.com/repos/$GITHUB_REPOSITORY/releases/${{ steps.latestRelease.outputs.release }}/assets?name=$(basename $rpm_file)"
           done
