@@ -74,7 +74,7 @@ jobs:
                      jq '.id')
 
           # Upload the RPM artifact to the release
-          for rpm_file in $(ls composer_rpm/*.rpm); do
+          for rpm_file in $(ls /home/runner/rpmbuild/RPMS/**/*.rpm); do
             curl --progress-bar \
                  --header "Authorization: token $GITHUB_TOKEN" \
                  --header "Content-Type: application/octet-stream" \
