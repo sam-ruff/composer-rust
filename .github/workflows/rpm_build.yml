@@ -1,9 +1,9 @@
 name: RPM Build
-
 on:
-  push:
-    tags:
-      - v[0-9]+.*
+  workflow_run:
+    workflows: ["Release"]
+    types:
+      - completed
 
 jobs:
   build:
@@ -44,3 +44,30 @@ jobs:
         with:
           name: composer_rpm
           path: $HOME/rpmbuild/RPMS/**/*.rpm
+      - name: Download workflow artifact
+        uses: actions/download-artifact@v2
+        with:
+          name: composer_rpm
+
+      - name: Get Release URL and upload RPM
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          # Get the tag for the release from the previous workflow
+          TAG_NAME=$(echo $GITHUB_REF | sed 's/refs\/tags\///g')
+
+          # Get the release ID
+          RELEASE_ID=$(curl --silent \
+                           --header "Authorization: token $GITHUB_TOKEN" \
+                           --header "Accept: application/vnd.github+json" \
+                           "https://api.github.com/repos/$GITHUB_REPOSITORY/releases/tags/$TAG_NAME" | \
+                     jq '.id')
+
+          # Upload the RPM artifact to the release
+          for rpm_file in $(ls composer_rpm/*.rpm); do
+            curl --progress-bar \
+                 --header "Authorization: token $GITHUB_TOKEN" \
+                 --header "Content-Type: application/octet-stream" \
+                 --data-binary @"$rpm_file" \
+                 --request POST "https://uploads.github.com/repos/$GITHUB_REPOSITORY/releases/$RELEASE_ID/assets?name=$(basename $rpm_file)"
+          done

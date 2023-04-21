@@ -4,10 +4,9 @@ permissions:
   contents: write
 
 on:
-  workflow_run:
-    workflows: ["RPM Build"]
-    types:
-      - completed
+  push:
+    tags:
+      - v[0-9]+.*
 
 jobs:
   create-release:
