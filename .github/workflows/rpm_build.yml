@@ -49,10 +49,10 @@ jobs:
         run: |
           ls $HOME/rpmbuild/RPMS/**/*.rpm
       - name: Upload RPM artifact
-        uses: actions/upload-artifact@v2
+        uses: actions/upload-artifact@v3
         with:
           name: composer_rpm
-          path: $HOME/rpmbuild/RPMS/**/*.rpm
+          path: /home/runner/rpmbuild/RPMS/**/*.rpm
 
       - name: Download workflow artifact
         uses: actions/download-artifact@v2
