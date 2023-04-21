@@ -23,6 +23,4 @@ cp %{SOURCE0} %{buildroot}%{_bindir}/composer
 chmod +x %{buildroot}%{_bindir}/composer
 
 %files
-%license LICENSE
-%doc README.md
 %{_bindir}/composer

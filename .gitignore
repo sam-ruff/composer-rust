@@ -1,3 +1,4 @@
 /target
 .idea/*
 .tmp-install
+test-rpm.sh
