@@ -77,11 +77,11 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
+          echo "https://uploads.github.com/repos/${{ github.repository }}/releases/${{ steps.latestRelease.outputs.release }}/assets?name=composer-1.${{github.run_number}}-1.x86_64.rpm"
           # Upload the RPM artifact to the release
-          for rpm_file in $(ls /home/runner/rpmbuild/RPMS/**/*.rpm); do
-            curl --progress-bar \
-                 --header "Authorization: token $GITHUB_TOKEN" \
-                 --header "Content-Type: application/octet-stream" \
-                 --data-binary @"$rpm_file" \
-                 --request POST "https://uploads.github.com/repos/$GITHUB_REPOSITORY/releases/${{ steps.latestRelease.outputs.release }}/assets?name=$(basename $rpm_file)"
+          curl --progress-bar \
+               --header "Authorization: token $GITHUB_TOKEN" \
+               --header "Content-Type: application/octet-stream" \
+               --data-binary @"composer-1.${{github.run_number}}-1.x86_64.rpm" \
+               --request POST "https://uploads.github.com/repos/${{ github.repository }}/releases/${{ steps.latestRelease.outputs.release }}/assets?name=composer-1.${{github.run_number}}-1.x86_64.rpm"
           done
