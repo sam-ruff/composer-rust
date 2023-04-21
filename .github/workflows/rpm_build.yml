@@ -45,6 +45,9 @@ jobs:
       - name: Build RPM
         run: rpmbuild -ba $HOME/rpmbuild/SPECS/composer.spec
 
+      - name: LS RPM
+        run: |
+          ls $HOME/rpmbuild/RPMS/**/*.rpm
       - name: Upload RPM artifact
         uses: actions/upload-artifact@v2
         with:
