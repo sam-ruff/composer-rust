@@ -36,7 +36,7 @@ jobs:
       - name: Prepare RPM spec file
         run: |
           export APP_NAME="composer"
-          export TAG_NAME=$(echo $GITHUB_REF | sed 's/refs\/tags\///g')
+          export APP_VERSION=$(echo $GITHUB_REF | sed 's/refs\/tags\///g')
           export APP_SUMMARY="A docker-compose package manager."
           export APP_LICENSE="MIT"
           export APP_URL="https://github.com/ByteSquid/composer-rust"
