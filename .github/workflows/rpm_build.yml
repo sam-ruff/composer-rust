@@ -60,7 +60,7 @@ jobs:
         run: |
           cp /home/runner/rpmbuild/RPMS/x86_64/composer-1.${{github.run_number}}-1.x86_64.rpm composer-1.${{github.run_number}}-1.x86_64.rpm
 
-      - name: Push to PackageCloud
+      - name: Push to PackageCloud (Ubuntu Jammy)
         uses: danielmundi/upload-packagecloud@v1
         with:
           PACKAGE-NAME: composer-1.${{github.run_number}}-1.x86_64.rpm
