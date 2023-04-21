@@ -1,4 +1,8 @@
 name: RPM Build
+
+permissions:
+  contents: write
+
 on:
   workflow_run:
     workflows: ["Release"]
