@@ -65,7 +65,7 @@ jobs:
         with:
           PACKAGE-NAME: composer-1.${{github.run_number}}-1.x86_64.rpm
           PACKAGECLOUD-USERNAME: sam-bytesquid
-          PACKAGECLOUD_DISTRIB: rpm_any/rpm_any
+          PACKAGECLOUD-DISTRIB: rpm_any/rpm_any
           PACKAGECLOUD-REPO: composer-production
           PACKAGECLOUD-TOKEN: ${{ secrets.PACKAGECLOUD_TOKEN }}
 
