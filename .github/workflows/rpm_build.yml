@@ -10,12 +10,6 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
-      - name: Get latest tag
-        run: echo "LATEST_TAG=$(git describe --tags --abbrev=0)" >> $GITHUB_ENV
-
-      - name: Use latest tag
-        run: |
-          echo "Latest tag is: ${{ env.LATEST_TAG }}"
 
       - name: Set up RPM build environment
         run: |
@@ -33,13 +27,13 @@ jobs:
         run: |
           mkdir -p target/release/
           touch target/release/composer
-#          cargo build --release
+          cargo build --release
 
       - name: Prepare RPM spec file
         run: |
           export APP_NAME="composer"
-          echo $GITHUB_REF
-          export APP_VERSION=1
+          export APP_VERSION="1.${{github.run_number}}"
+          echo $APP_VERSION
           export APP_SUMMARY="A docker-compose package manager."
           export APP_LICENSE="MIT"
           export APP_URL="https://github.com/ByteSquid/composer-rust"
