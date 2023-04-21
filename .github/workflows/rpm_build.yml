@@ -74,7 +74,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           # Get the tag for the release from the previous workflow
-          TAG_NAME=$(echo $GITHUB_REF | sed 's/refs\/tags\///g')
+          TAG_NAME=$(echo ${{  github.ref_name }} | sed 's/refs\/tags\///g')
           echo $TAG_NAME || return 0
           # Get the release ID
           RELEASE_ID=$(curl --silent \
