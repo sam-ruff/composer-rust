@@ -14,7 +14,8 @@ jobs:
         run: echo "LATEST_TAG=$(git describe --tags --abbrev=0)" >> $GITHUB_ENV
 
       - name: Use latest tag
-        run: echo "Latest tag is: ${{ env.LATEST_TAG }}"
+        run: |
+          echo "Latest tag is: ${{ env.LATEST_TAG }}"
 
       - name: Set up RPM build environment
         run: |
