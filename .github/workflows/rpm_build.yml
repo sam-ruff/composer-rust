@@ -65,14 +65,14 @@ jobs:
         run: |
           # Get the tag for the release from the previous workflow
           TAG_NAME=$(echo $GITHUB_REF | sed 's/refs\/tags\///g')
-
+          echo $TAG_NAME || return 0
           # Get the release ID
           RELEASE_ID=$(curl --silent \
                            --header "Authorization: token $GITHUB_TOKEN" \
                            --header "Accept: application/vnd.github+json" \
                            "https://api.github.com/repos/$GITHUB_REPOSITORY/releases/tags/$TAG_NAME" | \
                      jq '.id')
-
+          echo $RELEASE_ID || return 0
           # Upload the RPM artifact to the release
           for rpm_file in $(ls /home/runner/rpmbuild/RPMS/**/*.rpm); do
             curl --progress-bar \
