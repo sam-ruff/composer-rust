@@ -1,0 +1,59 @@
+name: RPM Build
+
+on:
+  push:
+      tags:
+        - v[0-9]+.*
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+    - name: Check out code
+      uses: actions/checkout@v2
+
+    - name: Set up RPM build environment
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y rpm
+
+    - name: Set up Rust
+      uses: actions-rs/toolchain@v1
+      with:
+        profile: minimal
+        toolchain: stable
+        override: true
+
+    - name: Build composer binary with cargo
+      run: |
+        cargo build --release
+        mkdir -p binary
+        cp target/release/composer binary/
+
+    - name: Prepare RPM spec file
+      run: |
+        # Set environment variables for envsubst
+        export APP_NAME="composer"
+        export APP_VERSION=$(git describe --tags --abbrev=0)
+        export APP_SUMMARY="A short summary of your app"
+        export APP_LICENSE="MIT"
+        export APP_URL="https://github.com/your_username/composer"
+        export APP_SOURCE_URL="composer"
+        export APP_DESCRIPTION="A longer description of your app"
+        export APP_AUTHOR="Your Name"
+        export APP_AUTHOR_EMAIL="your.email@example.com"
+
+        # Substitute variables in the template and copy the binary
+        mkdir -p $HOME/rpmbuild/{SPECS,SOURCES}
+        envsubst < composer.spec.template > $HOME/rpmbuild/SPECS/composer.spec
+        cp binary/composer $HOME/rpmbuild/SOURCES/
+
+    - name: Build RPM
+      run: |
+        rpmbuild -ba $HOME/rpmbuild/SPECS/composer.spec
+
+    - name: Upload RPM artifact
+      uses: actions/upload-artifact@v2
+      with:
+        name: composer_rpm
+        path: $HOME/rpmbuild/RPMS/**/*.rpm

@@ -27,9 +27,6 @@ jobs:
         include:
           - target: aarch64-unknown-linux-gnu
             os: ubuntu-latest
-          - target: x86_64-unknown-linux-musl
-            os: ubuntu-latest
-            build_tool: cross
           - target: aarch64-apple-darwin
             os: macos-latest-arch
           - target: x86_64-apple-darwin
@@ -39,10 +36,44 @@ jobs:
             os: macos-latest
           - target: x86_64-pc-windows-gnu
             os: windows-latest
+          - target: x86_64-unknown-linux-gnu
+            os: ubuntu-latest
+            asset_type: rpm
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v3
+      - name: Set up RPM build environment
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y rpm
+
+      - name: Set up Rust
+        uses: actions-rs/toolchain@v1
+        with:
+          profile: minimal
+          toolchain: stable
+          override: true
+      - name: Build RPM
+        if: matrix.asset_type == 'rpm'
+        run: |
+          cargo build --release
+          mkdir -p binary
+          cp target/release/composer binary/
+          export APP_NAME="composer"
+          export APP_VERSION=$(git describe --tags --abbrev=0)
+          export APP_SUMMARY="A package manager for docker-compose"
+          export APP_LICENSE="MIT"
+          export APP_URL="https://github.com/ByteSquid/composer-rust"
+          export APP_SOURCE_URL="composer"
+          export APP_DESCRIPTION="A package manager for docker-compose"
+          export APP_AUTHOR="Sam Ruff"
+          export APP_AUTHOR_EMAIL="sam@bytesquid.com"
+          mkdir -p $HOME/rpmbuild/{SPECS,SOURCES}
+          envsubst < composer.spec.template > $HOME/rpmbuild/SPECS/composer.spec
+          cp binary/composer $HOME/rpmbuild/SOURCES/
+          rpmbuild -ba $HOME/rpmbuild/SPECS/composer.spec
       - uses: taiki-e/upload-rust-binary-action@v1
+        if: matrix.asset_type != 'rpm'
         with:
           # (required) Comma-separated list of binary names (non-extension portion of filename) to build and upload.
           # Note that glob pattern is not supported yet.
@@ -55,3 +86,13 @@ jobs:
           archive: $bin-$tag-$target
           # (required) GitHub token for uploading assets to GitHub Releases.
           token: ${{ secrets.GITHUB_TOKEN }}
+    - name: Upload RPM
+      if: matrix.asset_type == 'rpm'
+      uses: actions/upload-release-asset@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        upload_url: ${{ needs.create-release.outputs.upload_url }}
+        asset_path: $HOME/rpmbuild/RPMS/x86_64/composer-${{ needs.create-release.outputs.tag }}.x86_64.rpm
+        asset_name: composer-${{ needs.create-release.outputs.tag }}.x86_64.rpm
+        asset_content_type: application/x-rpm

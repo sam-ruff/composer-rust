@@ -1,0 +1,34 @@
+Name:        ${APP_NAME}
+Version:     ${APP_VERSION}
+Release:     1%{?dist}
+Summary:     ${APP_SUMMARY}
+
+License:     ${APP_LICENSE}
+URL:         ${APP_URL}
+
+Source0:     ${APP_SOURCE_URL}
+
+%description
+${APP_DESCRIPTION}
+
+%prep
+%autosetup -n ${APP_NAME}-${APP_VERSION}
+%setup -c -T
+
+%build
+%configure
+make %{?_smp_mflags}
+
+%install
+mkdir -p %{buildroot}%{_bindir}
+cp %{SOURCE0} %{buildroot}%{_bindir}/composer
+chmod +x %{buildroot}%{_bindir}/composer
+
+%files
+%license LICENSE
+%doc README.md
+%{_bindir}/composer
+
+%changelog
+* $(date +"%a %b %d %Y") ${APP_AUTHOR} <${APP_AUTHOR_EMAIL}> - ${APP_VERSION}-1
+- Initial package
