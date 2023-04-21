@@ -25,15 +25,12 @@ jobs:
 
       - name: Build composer binary with cargo
         run: |
-          mkdir -p target/release/
-          touch target/release/composer
           cargo build --release
 
       - name: Prepare RPM spec file
         run: |
           export APP_NAME="composer"
           export APP_VERSION="1.${{github.run_number}}"
-          echo $APP_VERSION
           export APP_SUMMARY="A docker-compose package manager."
           export APP_LICENSE="MIT"
           export APP_URL="https://github.com/ByteSquid/composer-rust"
