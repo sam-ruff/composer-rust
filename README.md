@@ -1,4 +1,7 @@
+
 # Composer
+[![Release](https://github.com/ByteSquid/composer-rust/actions/workflows/rust_build_release.yml/badge.svg)](https://github.com/ByteSquid/composer-rust/actions/workflows/rust_build_release.yml)
+<br/>
 Composer is a command line tool similar to Helm, but designed for Docker Compose. It enables templating for Docker Compose files, making it easy to manage and deploy applications with different configurations.
 
 ## Features
