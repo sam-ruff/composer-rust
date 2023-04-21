@@ -75,22 +75,4 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           file: "composer-1.${{github.run_number}}-1.x86_64.rpm"
-          tags: true
-
-      - id: latestRelease
-        uses: pozetroninc/github-action-get-latest-release@master
-        with:
-          repository: ${{ github.repository }}
-          token: ${{ secrets.GITHUB_TOKEN }}
-      - name: Get Release URL and upload RPM
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          echo "https://uploads.github.com/repos/${{ github.repository }}/releases/${{ steps.latestRelease.outputs.release }}/assets?name=composer-1.${{github.run_number}}-1.x86_64.rpm"
-          # Upload the RPM artifact to the release
-          curl --progress-bar \
-               --header "Authorization: token $GITHUB_TOKEN" \
-               --header "Content-Type: application/octet-stream" \
-               --data-binary @"composer-1.${{github.run_number}}-1.x86_64.rpm" \
-               --request POST "https://uploads.github.com/repos/${{ github.repository }}/releases/${{ steps.latestRelease.outputs.release }}/assets?name=composer-1.${{github.run_number}}-1.x86_64.rpm"
-          done
+          update_latest_release: true
