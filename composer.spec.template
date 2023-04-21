@@ -30,5 +30,5 @@ chmod +x %{buildroot}%{_bindir}/composer
 %{_bindir}/composer
 
 %changelog
-* $(date +"%a %b %d %Y") ${APP_AUTHOR} <${APP_AUTHOR_EMAIL}> - ${APP_VERSION}-1
+* Fri Apr 21 2023 ${APP_AUTHOR} <${APP_AUTHOR_EMAIL}> - ${APP_VERSION}-1
 - Initial package
