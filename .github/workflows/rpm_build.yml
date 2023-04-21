@@ -10,19 +10,28 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
+      - name: Get latest tag
+        run: echo "LATEST_TAG=$(git describe --tags --abbrev=0)" >> $GITHUB_ENV
+
+      - name: Use latest tag
+        run: echo "Latest tag is: ${{ env.LATEST_TAG }}"
+
       - name: Set up RPM build environment
         run: |
           sudo apt-get update
           sudo apt-get install -y rpm
+
       - name: Setup Rust
         uses: actions-rs/toolchain@v1
         with:
           profile: minimal
           toolchain: stable
           override: true
+
       - name: Build composer binary with cargo
         run: |
           cargo build --release
+
       - name: Prepare RPM spec file
         run: |
           export APP_NAME="composer"
@@ -37,13 +46,16 @@ jobs:
           mkdir -p $HOME/rpmbuild/{SPECS,SOURCES}
           envsubst < composer.spec.template > $HOME/rpmbuild/SPECS/composer.spec
           cp target/release/composer $HOME/rpmbuild/SOURCES/
+
       - name: Build RPM
         run: rpmbuild -ba $HOME/rpmbuild/SPECS/composer.spec
+
       - name: Upload RPM artifact
         uses: actions/upload-artifact@v2
         with:
           name: composer_rpm
           path: $HOME/rpmbuild/RPMS/**/*.rpm
+
       - name: Download workflow artifact
         uses: actions/download-artifact@v2
         with:

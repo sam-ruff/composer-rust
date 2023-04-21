@@ -21,32 +21,32 @@ jobs:
           # (required) GitHub token for creating GitHub Releases.
           token: ${{ secrets.GITHUB_TOKEN }}
 
-  upload-assets:
-    strategy:
-      matrix:
-        include:
-          - target: aarch64-unknown-linux-gnu
-            os: ubuntu-latest
-          - target: x86_64-apple-darwin
-            os: macos-latest
-          # Universal macOS binary is supported as universal-apple-darwin.
-          - target: universal-apple-darwin
-            os: macos-latest
-          - target: x86_64-pc-windows-gnu
-            os: windows-latest
-    runs-on: ${{ matrix.os }}
-    steps:
-      - uses: actions/checkout@v3
-      - uses: taiki-e/upload-rust-binary-action@v1
-        with:
-          # (required) Comma-separated list of binary names (non-extension portion of filename) to build and upload.
-          # Note that glob pattern is not supported yet.
-          bin: composer
-          # (optional) On which platform to distribute the `.zip` file.
-          # [default value: windows]
-          # [possible values: all, unix, windows, none]
-          zip: all
-          # When multiple binary names are specified, default archive name or $bin variable cannot be used.
-          archive: $bin-$tag-$target
-          # (required) GitHub token for uploading assets to GitHub Releases.
-          token: ${{ secrets.GITHUB_TOKEN }}
+#  upload-assets:
+#    strategy:
+#      matrix:
+#        include:
+#          - target: aarch64-unknown-linux-gnu
+#            os: ubuntu-latest
+#          - target: x86_64-apple-darwin
+#            os: macos-latest
+#          # Universal macOS binary is supported as universal-apple-darwin.
+#          - target: universal-apple-darwin
+#            os: macos-latest
+#          - target: x86_64-pc-windows-gnu
+#            os: windows-latest
+#    runs-on: ${{ matrix.os }}
+#    steps:
+#      - uses: actions/checkout@v3
+#      - uses: taiki-e/upload-rust-binary-action@v1
+#        with:
+#          # (required) Comma-separated list of binary names (non-extension portion of filename) to build and upload.
+#          # Note that glob pattern is not supported yet.
+#          bin: composer
+#          # (optional) On which platform to distribute the `.zip` file.
+#          # [default value: windows]
+#          # [possible values: all, unix, windows, none]
+#          zip: all
+#          # When multiple binary names are specified, default archive name or $bin variable cannot be used.
+#          archive: $bin-$tag-$target
+#          # (required) GitHub token for uploading assets to GitHub Releases.
+#          token: ${{ secrets.GITHUB_TOKEN }}
