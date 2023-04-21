@@ -12,12 +12,10 @@ Source0:     ${APP_SOURCE_URL}
 ${APP_DESCRIPTION}
 
 %prep
-%autosetup -n ${APP_NAME}-${APP_VERSION}
-%setup -c -T
+%setup -q -c -T
 
 %build
-%configure
-make %{?_smp_mflags}
+# Nothing to build
 
 %install
 mkdir -p %{buildroot}%{_bindir}
@@ -28,7 +26,3 @@ chmod +x %{buildroot}%{_bindir}/composer
 %license LICENSE
 %doc README.md
 %{_bindir}/composer
-
-%changelog
-* Fri Apr 21 2023 ${APP_AUTHOR} <${APP_AUTHOR_EMAIL}> - ${APP_VERSION}-1
-- Initial package
