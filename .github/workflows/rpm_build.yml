@@ -65,9 +65,27 @@ jobs:
         with:
           PACKAGE-NAME: composer-1.${{github.run_number}}-1.x86_64.rpm
           PACKAGECLOUD-USERNAME: sam-bytesquid
-          PACKAGECLOUD-DISTRIB: rpm_any/rpm_any
+          PACKAGECLOUD-DISTRIB: ubuntu/jammy
           PACKAGECLOUD-REPO: composer-production
           PACKAGECLOUD-TOKEN: ${{ secrets.PACKAGECLOUD_TOKEN }}
+
+      - name: Push to PackageCloud
+              uses: danielmundi/upload-packagecloud@v1
+              with:
+                PACKAGE-NAME: composer-1.${{github.run_number}}-1.x86_64.rpm
+                PACKAGECLOUD-USERNAME: sam-bytesquid
+                PACKAGECLOUD-DISTRIB: rpm_any/rpm_any
+                PACKAGECLOUD-REPO: composer-production
+                PACKAGECLOUD-TOKEN: ${{ secrets.PACKAGECLOUD_TOKEN }}
+
+      - name: Upload latest to latest release
+        uses: xresloader/upload-to-github-release@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          file: "composer-1.${{github.run_number}}-1.x86_64.rpm"
+          tags: true
+
       - id: latestRelease
         uses: pozetroninc/github-action-get-latest-release@master
         with:

@@ -41,9 +41,10 @@ curl -s https://packagecloud.io/install/repositories/sam-bytesquid/composer-prod
 ```bash
 curl -s https://packagecloud.io/install/repositories/sam-bytesquid/composer-production/script.rpm.sh | sudo bash
 ```
-
-
-
+Then do (replacing for the latest version):
+```bash
+sudo yum install composer-1.21-1.x86_64
+```
 ## Building from Source
 Note: You will need rust installed also for this.
 https://www.rust-lang.org/tools/install 
