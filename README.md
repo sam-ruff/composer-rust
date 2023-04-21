@@ -31,6 +31,19 @@ The latest releases for OSX, Linux and Windows can be found here.
 https://github.com/ByteSquid/composer-rust/releases
 ```
 
+## RPM Installation
+Add Package Cloud Repos
+### Debian
+```bash
+curl -s https://packagecloud.io/install/repositories/sam-bytesquid/composer-production/script.deb.sh | sudo bash
+```
+### RPM Other
+```bash
+curl -s https://packagecloud.io/install/repositories/sam-bytesquid/composer-production/script.rpm.sh | sudo bash
+```
+
+
+
 ## Building from Source
 Note: You will need rust installed also for this.
 https://www.rust-lang.org/tools/install 

@@ -45,9 +45,6 @@ jobs:
       - name: Build RPM
         run: rpmbuild -ba $HOME/rpmbuild/SPECS/composer.spec
 
-      - name: LS RPM
-        run: |
-          ls $HOME/rpmbuild/RPMS/**/*.rpm
       - name: Upload RPM artifact
         uses: actions/upload-artifact@v3
         with:
@@ -58,6 +55,18 @@ jobs:
         uses: actions/download-artifact@v2
         with:
           name: composer_rpm
+
+      - name: Copy RPM
+        run: |
+          cp /home/runner/rpmbuild/RPMS/x86_64/composer-1.${{github.run_number}}-1.x86_64.rpm composer-1.${{github.run_number}}-1.x86_64.rpm
+
+      - name: Push to PackageCloud
+        uses: danielmundi/upload-packagecloud@v1
+        with:
+          PACKAGE-NAME: composer-1.${{github.run_number}}-1.x86_64.rpm
+          PACKAGECLOUD-USERNAME: sam-bytesquid
+          PACKAGECLOUD-REPO: composer-production
+          PACKAGECLOUD-TOKEN: ${{ secrets.PACKAGECLOUD_TOKEN }}
 
       - name: Get Release URL and upload RPM
         env:
