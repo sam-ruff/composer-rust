@@ -56,4 +56,4 @@ jobs:
           archive: $bin-$tag-$target
           # (required) GitHub token for uploading assets to GitHub Releases.
           token: ${{ secrets.GITHUB_TOKEN }}
-          ref: refs/tags/${{ steps.tag_version.outputs.new_tag }}
+          ref: ${{ steps.tag_version.outputs.new_tag }}
