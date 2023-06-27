@@ -154,16 +154,18 @@ pub fn add_application(
         write(file_path, rendered_content.as_bytes())?;
     }
 
-    if *app::always_pull() {
-        info!("Always pull is enabled. Pulling latest docker images.");
-        compose_pull(&composer_id_directory.to_str().unwrap());
-    }
     // Find all docker-compose.jinja2 files
     let all_compose_files = get_files_with_name(
         composer_id_directory.to_str().unwrap(),
         "docker-compose.jinja2",
     );
     for compose_file in all_compose_files {
+        if *app::always_pull() {
+            info!("Always pull is enabled. Pulling latest docker images.");
+            let compose_path = composer_id_directory.join(&compose_file);
+            let dir_str = compose_path.to_str().unwrap();
+            compose_pull(dir_str);
+        }
         compose_up(&compose_file, install_id)?;
     }
 
