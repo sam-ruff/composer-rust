@@ -21,6 +21,7 @@ jobs:
           # changelog: CHANGELOG.md
           # (required) GitHub token for creating GitHub Releases.
           token: ${{ secrets.GITHUB_TOKEN }}
+          ref: refs/tags/${{ steps.tag_version.outputs.new_tag }}
 
   upload-assets:
     strategy:
