@@ -25,6 +25,9 @@ jobs:
           # (required) GitHub token for creating GitHub Releases.
           token: ${{ secrets.GITHUB_TOKEN }}
           ref: refs/tags/${{ steps.tag_version.outputs.new_tag }}
+      - name: Sleep for a bit to let the git changes settle
+        id: Sleep
+        run: sleep 60
 
   upload-assets:
     strategy:
