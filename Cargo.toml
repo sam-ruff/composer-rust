@@ -1,6 +1,6 @@
 [package]
 name = "composer"
-version = "2.0.5"
+version = "2.0.36"
 edition = "2021"
 authors = ["Sam Ruff - sam@bytesquid.com", "Ryan Brogden - ryan@bytesquid.com"]
 readme = "README.md"
