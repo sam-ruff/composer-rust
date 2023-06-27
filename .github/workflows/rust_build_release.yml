@@ -46,7 +46,7 @@ jobs:
           fetch-depth: 0
       - name: Get the latest tag
         id: gettag
-        run: echo "tag=$(git describe --tags --abbrev=0)" >> $GITHUB_OUTPUT
+        run: echo "tag=$(git describe --tags --abbrev=0)" >> $GITHUB_OUTPUT && git describe --tags --abbrev=0
       - uses: taiki-e/upload-rust-binary-action@v1
         with:
           # (required) Comma-separated list of binary names (non-extension portion of filename) to build and upload.
