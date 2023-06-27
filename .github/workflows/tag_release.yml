@@ -1,0 +1,19 @@
+name: Bump version
+on:
+  push:
+    branches:
+      - master
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@master
+      - name: Bump version and push tag
+        uses: hennejg/github-tag-action@v4.1.jh1
+        env:
+          MAJOR_STRING_TOKEN: "BREAKING"
+          MINOR_STRING_TOKEN: "feat:"
+          PATCH_STRING_TOKEN: "fix:"
+          NONE_STRING_TOKEN: "chore:"
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
