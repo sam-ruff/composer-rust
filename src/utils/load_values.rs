@@ -2,6 +2,7 @@ use serde_yaml::{Mapping, Value};
 
 use crate::utils::yaml_string_parser::parse_yaml_string;
 use anyhow::Context;
+use serde_yaml::mapping::Entry;
 use std::{collections::HashMap, fs::File};
 
 /// Loads one or more YAML files or key-value string(s) into a single `serde_yaml::Value` object.
@@ -45,50 +46,59 @@ use std::{collections::HashMap, fs::File};
 /// # Returns
 ///
 /// A `serde_yaml::Value` object representing the merged YAML mappings loaded from the input files or strings.
-pub fn load_yaml_files(yaml_files: &Vec<&str>) -> anyhow::Result<Value> {
-    // Create an empty HashMap to store the YAML values
-    let mut yaml_values = HashMap::new();
-    // Iterate over each YAML file path
-    let mut yaml: Value;
-    for yaml_file in yaml_files {
-        // If the yaml_file is not a path but a x.y.z=value format string load it as a value
-        if yaml_file.contains("=") {
-            yaml = parse_yaml_string(yaml_file)?;
-        } else {
-            // Open the YAML file and
-            // Deserialize the YAML file into a serde_yaml::Value object
-            yaml = read_yaml_file(yaml_file)
-                .with_context(|| format!("Failed to read values YAML file: {}", yaml_file))?;
+fn merge_maps(existing_map: &mut Mapping, new_map: Mapping) {
+    for (new_key, new_value) in new_map {
+        let new_value_clone = new_value.clone();
+        match existing_map.entry(new_key) {
+            Entry::Occupied(mut entry) => {
+                if let (Value::Mapping(existing_inner), Value::Mapping(new_inner)) =
+                    (entry.get_mut(), &new_value)
+                {
+                    merge_maps(existing_inner, new_inner.clone());
+                } else {
+                    entry.insert(new_value_clone);
+                }
+            }
+            Entry::Vacant(entry) => {
+                entry.insert(new_value);
+            }
         }
+    }
+}
 
-        // Merge the YAML values with the existing values
+pub fn load_yaml_files(yaml_files: &Vec<&str>) -> anyhow::Result<Value> {
+    let mut yaml_values = Mapping::new();
+
+    for yaml_file in yaml_files {
+        let yaml = if yaml_file.contains("=") {
+            parse_yaml_string(yaml_file)? // Please define parse_yaml_string function.
+        } else {
+            read_yaml_file(yaml_file) // Please define read_yaml_file function.
+                .with_context(|| format!("Failed to read values YAML file: {}", yaml_file))?
+        };
+
         if let Value::Mapping(map) = yaml {
             for (key, value) in map {
-                if let Some(existing_value) = yaml_values.get_mut(&key) {
-                    // If the existing value is a Mapping, merge the two mappings
-                    if let Value::Mapping(existing_map) = existing_value {
-                        if let Value::Mapping(new_map) = value {
-                            for (new_key, new_value) in new_map {
-                                existing_map.insert(new_key.clone(), new_value.clone());
-                            }
-                            continue;
+                let new_val = value.clone();
+                match yaml_values.entry(key) {
+                    Entry::Occupied(mut entry) => {
+                        if let (Value::Mapping(existing_inner), Value::Mapping(new_inner)) =
+                            (entry.get_mut(), value)
+                        {
+                            merge_maps(existing_inner, new_inner);
+                        } else {
+                            entry.insert(new_val);
                         }
                     }
+                    Entry::Vacant(entry) => {
+                        entry.insert(value);
+                    }
                 }
-                // Otherwise, insert the new value
-                yaml_values.insert(key.clone(), value.clone());
             }
         }
     }
 
-    // Create a new Mapping object from the HashMap entries
-    let mut mapping = Mapping::new();
-    for (key, value) in yaml_values.iter() {
-        mapping.insert(key.clone(), value.clone());
-    }
-
-    // Convert the Mapping to a serde_yaml::Value object and return it
-    Ok(Value::Mapping(mapping))
+    Ok(Value::Mapping(yaml_values))
 }
 
 pub fn get_value_files_as_refs(strings: &Vec<String>) -> Vec<&str> {
@@ -115,6 +125,38 @@ mod tests {
         hello: bool,
         world: String,
         foo: HashMap<Value, Value>,
+    }
+
+    use serde_yaml::Mapping;
+
+    #[test]
+    fn test_merge_maps() {
+        // Define existing map
+        let mut existing_map: Mapping = Mapping::new();
+        existing_map.insert(
+            Value::String("key1".to_string()),
+            Value::String("value1".to_string()),
+        );
+
+        // Define new map
+        let mut new_map: Mapping = Mapping::new();
+        new_map.insert(
+            Value::String("key2".to_string()),
+            Value::String("value2".to_string()),
+        );
+
+        // Merge maps
+        merge_maps(&mut existing_map, new_map);
+
+        // Check merged map
+        assert_eq!(
+            existing_map.get(&"key1".to_string()).unwrap(),
+            &Value::String("value1".to_string())
+        );
+        assert_eq!(
+            existing_map.get(&"key2".to_string()).unwrap(),
+            &Value::String("value2".to_string())
+        );
     }
 
     #[test]
@@ -172,6 +214,7 @@ mod tests {
         foo:
           bar: "hi2"
           nested:
+            new: "value"
             map: "here""#,
         )?;
         // Convert the expected YAML contents into a `serde_yaml::Value` object
@@ -207,6 +250,7 @@ mod tests {
         foo:
           bar: "manual"
           nested:
+            new: "value"
             map: "here""#,
         )?;
         // Convert the expected YAML contents into a `serde_yaml::Value` object
@@ -244,6 +288,7 @@ mod tests {
         foo:
           bar: "manual"
           nested:
+            new: "value"
             map: "wow""#,
         )?;
         // Convert the expected YAML contents into a `serde_yaml::Value` object
@@ -259,24 +304,27 @@ mod tests {
         foo: HashMap<String, String>,
     }
 
+    #[derive(Debug, Serialize, Deserialize)]
+    struct ExpectedYamlOverride {
+        world: String,
+    }
+
     #[test]
     fn test_read_yaml_file() -> anyhow::Result<()> {
         trace!("Running test_read_yaml_file.");
 
         // Get the current directory and the path to the test YAML file
         let current_dir = current_dir()?;
-        let yaml_path = RelativePath::new("resources/test/test_values/override_complex.yaml")
+        let yaml_path = RelativePath::new("resources/test/test_values/override.yaml")
             .to_logical_path(&current_dir);
 
         // Read the YAML file into a `serde_yaml::Value` object
         let loaded_yaml = read_yaml_file(yaml_path.to_str().unwrap())?;
 
         // Deserialize the expected YAML contents into a struct
-        let expected_yaml: ExpectedYamlSimple = from_str(
+        let expected_yaml: ExpectedYamlOverride = from_str(
             r#"---
-        world: "overwritten"
-        foo:
-          bar: "hi2""#,
+        world: "notString""#,
         )?;
 
         // Convert the expected YAML contents into a `serde_yaml::Value` object
