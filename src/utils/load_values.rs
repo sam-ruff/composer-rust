@@ -3,7 +3,7 @@ use serde_yaml::{Mapping, Value};
 use crate::utils::yaml_string_parser::parse_yaml_string;
 use anyhow::Context;
 use serde_yaml::mapping::Entry;
-use std::{collections::HashMap, fs::File};
+use std::fs::File;
 
 /// Loads one or more YAML files or key-value string(s) into a single `serde_yaml::Value` object.
 ///
