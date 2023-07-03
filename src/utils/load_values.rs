@@ -118,6 +118,7 @@ mod tests {
     use relative_path::RelativePath;
     use serde::{Deserialize, Serialize};
     use serde_yaml::from_str;
+    use std::collections::HashMap;
     use std::env::current_dir;
 
     #[derive(Debug, Serialize, Deserialize)]
