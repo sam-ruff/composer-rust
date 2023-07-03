@@ -1,3 +1,5 @@
 world: "overwritten"
 foo:
   bar: "hi2"
+  nested:
+    new: "value"
