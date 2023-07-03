@@ -5,6 +5,26 @@ use anyhow::Context;
 use serde_yaml::mapping::Entry;
 use std::fs::File;
 
+fn merge_maps(existing_map: &mut Mapping, new_map: Mapping) {
+    for (new_key, new_value) in new_map {
+        let new_value_clone = new_value.clone();
+        match existing_map.entry(new_key) {
+            Entry::Occupied(mut entry) => {
+                if let (Value::Mapping(existing_inner), Value::Mapping(new_inner)) =
+                    (entry.get_mut(), &new_value)
+                {
+                    merge_maps(existing_inner, new_inner.clone());
+                } else {
+                    entry.insert(new_value_clone);
+                }
+            }
+            Entry::Vacant(entry) => {
+                entry.insert(new_value);
+            }
+        }
+    }
+}
+
 /// Loads one or more YAML files or key-value string(s) into a single `serde_yaml::Value` object.
 ///
 /// This function takes a vector of YAML file paths or key-value strings in the format of "x.y.z=foo", and
@@ -46,26 +66,6 @@ use std::fs::File;
 /// # Returns
 ///
 /// A `serde_yaml::Value` object representing the merged YAML mappings loaded from the input files or strings.
-fn merge_maps(existing_map: &mut Mapping, new_map: Mapping) {
-    for (new_key, new_value) in new_map {
-        let new_value_clone = new_value.clone();
-        match existing_map.entry(new_key) {
-            Entry::Occupied(mut entry) => {
-                if let (Value::Mapping(existing_inner), Value::Mapping(new_inner)) =
-                    (entry.get_mut(), &new_value)
-                {
-                    merge_maps(existing_inner, new_inner.clone());
-                } else {
-                    entry.insert(new_value_clone);
-                }
-            }
-            Entry::Vacant(entry) => {
-                entry.insert(new_value);
-            }
-        }
-    }
-}
-
 pub fn load_yaml_files(yaml_files: &Vec<&str>) -> anyhow::Result<Value> {
     let mut yaml_values = Mapping::new();
 
