@@ -71,9 +71,9 @@ pub fn load_yaml_files(yaml_files: &Vec<&str>) -> anyhow::Result<Value> {
 
     for yaml_file in yaml_files {
         let yaml = if yaml_file.contains("=") {
-            parse_yaml_string(yaml_file)? // Please define parse_yaml_string function.
+            parse_yaml_string(yaml_file)?
         } else {
-            read_yaml_file(yaml_file) // Please define read_yaml_file function.
+            read_yaml_file(yaml_file)
                 .with_context(|| format!("Failed to read values YAML file: {}", yaml_file))?
         };
 
