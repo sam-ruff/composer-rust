@@ -59,6 +59,7 @@ curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
 ```
 Then get the composer source:
 ```bash
+source "$HOME/.cargo/env"
 git clone https://github.com/ByteSquid/composer-rust.git
 cd composer-rust
 cargo build --release
