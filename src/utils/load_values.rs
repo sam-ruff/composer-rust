@@ -79,23 +79,33 @@ pub fn load_yaml_files(yaml_files: &Vec<&str>) -> anyhow::Result<Value> {
                 .with_context(|| format!("Failed to read values YAML file: {}", yaml_file))?
         };
 
-        if let Value::Mapping(map) = yaml {
-            for (key, value) in map {
-                let new_val = value.clone();
-                match yaml_values.entry(key) {
-                    Entry::Occupied(mut entry) => {
-                        if let (Value::Mapping(existing_inner), Value::Mapping(new_inner)) =
-                            (entry.get_mut(), value)
-                        {
-                            merge_maps(existing_inner, new_inner);
-                        } else {
-                            entry.insert(new_val);
+        // Start merging here, whether it's a map or not
+        match &yaml {
+            Value::Mapping(map) => {
+                for (key, value) in map {
+                    match yaml_values.entry(key.clone()) {
+                        Entry::Occupied(mut entry) => match (entry.get_mut(), value) {
+                            (Value::Mapping(existing_inner), Value::Mapping(new_inner)) => {
+                                merge_maps(existing_inner, new_inner.clone());
+                            }
+                            (Value::Sequence(existing_list), Value::Sequence(new_list)) => {
+                                existing_list.extend(new_list.clone());
+                            }
+                            _ => {
+                                entry.insert(value.clone());
+                            }
+                        },
+                        Entry::Vacant(entry) => {
+                            entry.insert(value.clone());
                         }
                     }
-                    Entry::Vacant(entry) => {
-                        entry.insert(value);
-                    }
                 }
+            }
+            // In case top-level structure is not a map
+            _ => {
+                return Err(anyhow::anyhow!(
+                    "Expected top-level YAML structure to be a mapping."
+                ));
             }
         }
     }
@@ -381,6 +391,43 @@ mod tests {
 
         // Test that the merged YAML content matches the expected result
         assert_eq!(expected, yaml1);
+
+        Ok(())
+    }
+
+    #[test]
+    fn test_load_yaml_from_strings() -> anyhow::Result<()> {
+        // Inline YAML strings for the first and second YAML contents
+        trace!("Running test_copy_files_complex_manual_override_multiple.");
+        let current_dir = current_dir()?;
+        let values_path = RelativePath::new("resources/test/merge_lists/first.yaml")
+            .to_logical_path(&current_dir);
+        let override_path = RelativePath::new("resources/test/merge_lists/second.yaml")
+            .to_logical_path(&current_dir);
+        let files = vec![
+            values_path.to_str().unwrap(),
+            override_path.to_str().unwrap(),
+            "fruit.color=red",
+        ];
+
+        // Load and merge YAML contents from strings using `load_yaml_files` function
+        let merged_yaml = load_yaml_files(&files)?;
+
+        // Now, let's define the expected merged YAML result
+        let expected_str = r#"
+        items:
+          - apple
+          - banana
+          - orange
+          - cherry
+        world: "goodbye"
+        fruit:
+          color: "red"
+    "#;
+        let expected: Value = from_str(expected_str)?;
+
+        // Test that the merged YAML content matches the expected result
+        assert_eq!(expected, merged_yaml);
 
         Ok(())
     }
