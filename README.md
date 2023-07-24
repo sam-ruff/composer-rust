@@ -21,11 +21,11 @@ RPM Releases: <br/>
 - Docker Compose
 
 ## Getting Started
-To install Composer, run the following command for Linux:
+To install Composer, run the following command for Ubuntu/Rocky:
 ```bash
 curl -fsSL https://raw.githubusercontent.com/ByteSquid/composer-rust/master/scripts/install-linux.sh | bash
 ```
-For AWS Linux:
+For AWS Linux 2 (if this is out of date when you check the version, please install from source):
 ```bash
 curl -fsSL https://raw.githubusercontent.com/ByteSquid/composer-rust/master/scripts/install-aws.sh | bash
 ```
@@ -59,6 +59,7 @@ curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
 ```
 Then get the composer source:
 ```bash
+source "$HOME/.cargo/env"
 git clone https://github.com/ByteSquid/composer-rust.git
 cd composer-rust
 cargo build --release
