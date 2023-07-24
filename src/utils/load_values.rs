@@ -9,15 +9,17 @@ fn merge_maps(existing_map: &mut Mapping, new_map: Mapping) {
     for (new_key, new_value) in new_map {
         let new_value_clone = new_value.clone();
         match existing_map.entry(new_key) {
-            Entry::Occupied(mut entry) => {
-                if let (Value::Mapping(existing_inner), Value::Mapping(new_inner)) =
-                    (entry.get_mut(), &new_value)
-                {
+            Entry::Occupied(mut entry) => match (entry.get_mut(), &new_value) {
+                (Value::Mapping(existing_inner), Value::Mapping(new_inner)) => {
                     merge_maps(existing_inner, new_inner.clone());
-                } else {
+                }
+                (Value::Sequence(existing_list), Value::Sequence(new_list)) => {
+                    existing_list.extend(new_list.clone());
+                }
+                _ => {
                     entry.insert(new_value_clone);
                 }
-            }
+            },
             Entry::Vacant(entry) => {
                 entry.insert(new_value);
             }
@@ -341,6 +343,45 @@ mod tests {
     fn test_read_invalid_yaml_file() -> anyhow::Result<()> {
         // Test that `read_yaml_file()` returns an error when given an invalid path
         assert_matches!(read_yaml_file("invalid/path.yaml"), Err(_));
+        Ok(())
+    }
+
+    #[test]
+    fn test_merge_yaml_lists() -> anyhow::Result<()> {
+        // Your inline YAML strings for the first and second YAML contents
+        let yaml1_str = r#"
+        items:
+          - apple
+          - banana
+        world: "hello""#;
+
+        let yaml2_str = r#"
+        items:
+          - orange
+          - cherry
+        world: "goodbye""#;
+
+        // Deserialize the inline YAML strings to serde_yaml::Value objects
+        let mut yaml1: Value = from_str(yaml1_str)?;
+        let yaml2: Value = from_str(yaml2_str)?;
+
+        if let (Value::Mapping(ref mut map1), Value::Mapping(map2)) = (&mut yaml1, &yaml2) {
+            merge_maps(map1, map2.clone());
+        }
+
+        // Now, let's define the expected merged YAML result
+        let expected_str = r#"
+        items:
+          - apple
+          - banana
+          - orange
+          - cherry
+        world: "goodbye""#;
+        let expected: Value = from_str(expected_str)?;
+
+        // Test that the merged YAML content matches the expected result
+        assert_eq!(expected, yaml1);
+
         Ok(())
     }
 }
