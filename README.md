@@ -67,6 +67,9 @@ cargo build --release
 Copy the binary to a location in your PATH, e.g. `/usr/local/bin`:
 ```bash
 sudo cp target/release/composer /usr/local/bin
+# If you dont have /usr/local/bin on your path
+echo 'export PATH="/usr/local/bin:$PATH"' >> ~/.bashrc
+source ~/.bashrc
 ```
 
 ## Usage
