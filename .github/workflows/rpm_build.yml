@@ -32,7 +32,7 @@ jobs:
 
       - name: Read Version File
         id: version
-        run: echo "RELEASE_VERSION=$(cat VERSION)" >> $GITHUB_ENV
+        run: ls && echo "RELEASE_VERSION=$(cat VERSION)" >> $GITHUB_ENV
 
 
       - name: Build composer binary with cargo
