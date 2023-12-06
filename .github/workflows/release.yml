@@ -88,11 +88,12 @@ jobs:
 
       - name: Overwrite version in Cargo.toml
         run: |
-          if [[ ${{ runner.os }} == 'Windows' ]]; then
-          powershell -Command "(Get-Content Cargo.toml).replace('version = .*', 'version = \"${{ env.RELEASE_VERSION }}\"') | Set-Content Cargo.toml"
+          if [ "${{ runner.os }}" = "Windows" ]; then
+            powershell -Command "(Get-Content Cargo.toml).replace('version = .*', 'version = \"${{ env.RELEASE_VERSION }}\"') | Set-Content Cargo.toml"
           else
-          sed -i "s/^version = .*/version = \"${{ env.RELEASE_VERSION }}\"/" Cargo.toml
+            sed -i "s/^version = .*/version = \"${{ env.RELEASE_VERSION }}\"/" Cargo.toml
           fi
+      
 
       - name: Build release binary
         run: cargo build --release --target ${{ matrix.target }}
