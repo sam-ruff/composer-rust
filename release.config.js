@@ -5,10 +5,6 @@ const branches = [
     {
         name: 'alpha',
         prerelease: true
-    },
-    {
-        name: 'fix-build',
-        prerelease: "rc"
     }
 ];
 

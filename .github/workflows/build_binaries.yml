@@ -26,6 +26,16 @@ jobs:
           toolchain: stable
           override: true
 
+      - name: Download Version File
+        uses: actions/download-artifact@v2
+        with:
+          name: version
+
+      - name: Read Version File
+        id: version
+        run: echo "RELEASE_VERSION=$(cat VERSION)" >> $GITHUB_ENV
+
+
       - name: Overwrite version in Cargo.toml
         run: sed -i "s/^version = .*/version = \"${{ env.RELEASE_VERSION }}\"/" Cargo.toml
 
@@ -60,6 +70,16 @@ jobs:
           toolchain: stable
           target: x86_64-unknown-linux-musl
           override: true
+
+      - name: Download Version File
+        uses: actions/download-artifact@v2
+        with:
+          name: version
+
+      - name: Read Version File
+        id: version
+        run: echo "RELEASE_VERSION=$(cat VERSION)" >> $GITHUB_ENV
+
 
       - name: Overwrite version in Cargo.toml for musl build
         run: sed -i "s/^version = .*/version = \"${{ env.RELEASE_VERSION }}\"/" Cargo.toml
