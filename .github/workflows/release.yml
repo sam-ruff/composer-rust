@@ -91,7 +91,7 @@ jobs:
           if [ "${{ runner.os }}" = "Windows" ]; then
             powershell -Command "(Get-Content Cargo.toml).replace('version = .*', 'version = \"${{ env.RELEASE_VERSION }}\"') | Set-Content Cargo.toml"
           else
-            sed -i "s/^version = .*/version = \"${{ env.RELEASE_VERSION }}\"/" Cargo.toml
+            sed -i '' "s/^version = .*/version = \"${{ env.RELEASE_VERSION }}\"/" Cargo.toml
           fi
       
 
@@ -121,7 +121,7 @@ jobs:
         uses: actions/checkout@v2
 
       - name: Setup zig for cross-compile
-        run: sudo snap install zig --beta --classic
+        run: sudo apt-get -y install musl && sudo snap install zig --beta --classic
 
       - name: Set up Rust with musl target
         uses: actions-rs/toolchain@v1
