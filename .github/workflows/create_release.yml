@@ -36,11 +36,11 @@ jobs:
           dlx semantic-release
 
       - name: Create GitHub Release
-        if: (github.ref == 'refs/heads/main') && (!contains(github.event.head_commit.message, 'chore:'))
+        if: ((github.ref == 'refs/heads/master') || (github.ref == 'refs/heads/fix-build')) && (!contains(github.event.head_commit.message, 'chore:'))
         uses: actions/create-release@v1
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           tag_name: ${{ env.RELEASE_VERSION }}
           release_name: Release ${{ env.RELEASE_VERSION }}
-          body: Release ${{ env.RELEASE_VERSION }}
+          body: Automated release for ${{ env.RELEASE_VERSION }}

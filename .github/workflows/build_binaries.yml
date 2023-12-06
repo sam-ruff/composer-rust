@@ -1,4 +1,4 @@
-name: Build and Upload Binaries
+name: "Build and Upload Binaries"
 
 permissions:
   contents: write
