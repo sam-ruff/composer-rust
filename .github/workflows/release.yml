@@ -65,8 +65,7 @@ jobs:
             target: x86_64-unknown-linux-gnu
           - os: macos-latest
             target: x86_64-apple-darwin
-          - os: windows-latest
-            target: x86_64-pc-windows-msvc
+
     steps:
       - name: Check out repository
         uses: actions/checkout@v2
@@ -88,11 +87,7 @@ jobs:
 
       - name: Overwrite version in Cargo.toml
         run: |
-          if [ "${{ runner.os }}" = "Windows" ]; then
-            powershell -Command "(Get-Content Cargo.toml).replace('version = .*', 'version = \"${{ env.RELEASE_VERSION }}\"') | Set-Content Cargo.toml"
-          else
-            sed -i '' "s/^version = .*/version = \"${{ env.RELEASE_VERSION }}\"/" Cargo.toml
-          fi
+          sed -i "s/^version = .*/version = \"${{ env.RELEASE_VERSION }}\"/" Cargo.toml
       
 
       - name: Build release binary
@@ -249,3 +244,49 @@ jobs:
         with:
           file: "composer-${{ env.RELEASE_VERSION }}-1.x86_64.rpm"
           update_latest_release: true
+
+  build-windows:
+    needs: release
+    runs-on: windows-latest
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v2
+
+      - name: Set up Rust
+        uses: actions-rs/toolchain@v1
+        with:
+          profile: minimal
+          toolchain: stable
+          override: true
+
+      - name: Download Version File
+        uses: actions/download-artifact@v3
+        with:
+          name: version
+
+      - name: Read Version File
+        run: echo "RELEASE_VERSION=$(cat VERSION)" >> $GITHUB_ENV
+
+      - name: Overwrite version in Cargo.toml
+        run: |
+          $content = Get-Content Cargo.toml -Raw
+          $content = $content -replace 'version = ".*"', "version = ""${{ env.RELEASE_VERSION }}"""
+          $content | Set-Content Cargo.toml
+
+      - name: Build release binary
+        run: cargo build --release --target x86_64-pc-windows-msvc
+
+      - name: Rename binary
+        run: |
+          mv target/x86_64-pc-windows-msvc/release/composer.exe target/x86_64-pc-windows-msvc/release/composer-windows-${{ env.RELEASE_VERSION }}.exe
+
+      - name: Upload binary to release
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ github.event.workflow_run.artifacts_url }}
+          asset_path: ./target/x86_64-pc-windows-msvc/release/composer-windows-${{ env.RELEASE_VERSION }}.exe
+          asset_name: composer-windows-${{ env.RELEASE_VERSION }}.exe
+          asset_content_type: application/octet-stream
