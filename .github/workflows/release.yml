@@ -141,8 +141,8 @@ jobs:
 
       - name: Build release binary with musl
         run: |
-        cargo install cargo-zigbuild
-        cargo zigbuild --release --target x86_64-unknown-linux-musl
+          cargo install cargo-zigbuild
+          cargo zigbuild --release --target x86_64-unknown-linux-musl
 
       - name: Rename binary for musl
         run: |
