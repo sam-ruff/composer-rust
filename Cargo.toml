@@ -1,6 +1,7 @@
 [package]
 name = "composer"
-version = "2.0.60"
+# This will get overwritten during the CICD
+version = "0.0.0"
 edition = "2021"
 authors = ["Sam Ruff - sam@bytesquid.com", "Ryan Brogden - ryan@bytesquid.com"]
 readme = "README.md"
