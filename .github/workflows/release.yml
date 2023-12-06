@@ -45,6 +45,16 @@ jobs:
           release_name: Release ${{ env.RELEASE_VERSION }}
           body: Automated release for ${{ env.RELEASE_VERSION }}
 
+      - name: Create Version File
+        run: echo "${{ env.RELEASE_VERSION }}" > VERSION
+
+      - name: Upload Version File
+        uses: actions/upload-artifact@v3
+        with:
+          name: version
+          path: VERSION
+
+
   build:
     needs: release
     runs-on: ${{ matrix.os }}
@@ -61,6 +71,16 @@ jobs:
           profile: minimal
           toolchain: stable
           override: true
+
+      - name: Download Version File
+        uses: actions/download-artifact@v3
+        with:
+          name: version
+
+      - name: Read Version File
+        id: version
+        run: echo "RELEASE_VERSION=$(cat VERSION)" >> $GITHUB_ENV
+
 
       - name: Overwrite version in Cargo.toml
         run: sed -i "s/^version = .*/version = \"${{ env.RELEASE_VERSION }}\"/" Cargo.toml
@@ -97,6 +117,15 @@ jobs:
           toolchain: stable
           target: x86_64-unknown-linux-musl
           override: true
+
+      - name: Download Version File
+        uses: actions/download-artifact@v3
+        with:
+          name: version
+
+      - name: Read Version File
+        id: version
+        run: echo "RELEASE_VERSION=$(cat VERSION)" >> $GITHUB_ENV
 
       - name: Download Version File
         uses: actions/download-artifact@v3
@@ -144,6 +173,15 @@ jobs:
           profile: minimal
           toolchain: stable
           override: true
+
+      - name: Download Version File
+        uses: actions/download-artifact@v3
+        with:
+          name: version
+
+      - name: Read Version File
+        id: version
+        run: echo "RELEASE_VERSION=$(cat VERSION)" >> $GITHUB_ENV
 
       - name: Build composer binary with cargo
         run: |
