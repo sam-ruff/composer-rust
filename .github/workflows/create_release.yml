@@ -46,10 +46,10 @@ jobs:
           body: Automated release for ${{ env.RELEASE_VERSION }}
 
       - name: Create Version File
-        run: echo $RELEASE_VERSION > VERSION
+        run: echo "${{ env.RELEASE_VERSION }}" > VERSION
 
       - name: Upload Version File
-        uses: actions/upload-artifact@v2
+        uses: actions/upload-artifact@v3
         with:
           name: version
           path: VERSION

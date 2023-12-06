@@ -28,7 +28,7 @@ jobs:
           override: true
 
       - name: Download Version File
-        uses: actions/download-artifact@v2
+        uses: actions/download-artifact@v3
         with:
           name: version
 
