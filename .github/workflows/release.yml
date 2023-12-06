@@ -46,6 +46,7 @@ jobs:
           body: Automated release for ${{ env.RELEASE_VERSION }}
 
   build:
+    needs: release
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
@@ -83,6 +84,7 @@ jobs:
 
   # Additional configuration for non-glibc Linux builds (e.g., musl)
   build-linux-musl:
+    needs: release
     runs-on: ubuntu-latest
     steps:
       - name: Check out repository
@@ -126,6 +128,7 @@ jobs:
           asset_content_type: application/octet-stream
 
   create-rpm:
+    needs: release
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
