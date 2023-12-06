@@ -87,7 +87,7 @@ jobs:
 
       - name: Overwrite version in Cargo.toml
         run: |
-          sed -i "s/^version = .*/version = \"${{ env.RELEASE_VERSION }}\"/" Cargo.toml
+          sed -i.bak -e 's/^version = "0\.0\.0"/version = "2.1.12"/' Cargo.toml && rm -f Cargo.toml.bak
       
 
       - name: Build release binary
@@ -97,15 +97,14 @@ jobs:
         run: |
           mv target/${{ matrix.target }}/release/composer target/${{ matrix.target }}/release/composer-${{ matrix.os }}-${{ env.RELEASE_VERSION }}
 
-      - name: Upload binary to release
-        uses: actions/upload-release-asset@v1
+      - name: Upload latest to latest release
+        uses: xresloader/upload-to-github-release@v1
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
-          upload_url: ${{ github.event.workflow_run.artifacts_url }}
-          asset_path: ./target/${{ matrix.target }}/release/composer-${{ matrix.os }}-${{ env.RELEASE_VERSION }}
-          asset_name: composer-${{ matrix.os }}-${{ env.RELEASE_VERSION }}
-          asset_content_type: application/octet-stream
+          file: "./target/${{ matrix.target }}/release/composer-${{ matrix.os }}-${{ env.RELEASE_VERSION }}"
+          update_latest_release: true
+
 
   # Additional configuration for non-glibc Linux builds (e.g., musl)
   build-linux-musl:
@@ -143,7 +142,7 @@ jobs:
 
 
       - name: Overwrite version in Cargo.toml for musl build
-        run: sed -i "s/^version = .*/version = \"${{ env.RELEASE_VERSION }}\"/" Cargo.toml
+        run: sed -i.bak -e 's/^version = "0\.0\.0"/version = "2.1.12"/' Cargo.toml && rm -f Cargo.toml.bak
 
 
       - name: Build release binary with musl
@@ -155,15 +154,13 @@ jobs:
         run: |
           mv target/x86_64-unknown-linux-musl/release/composer target/x86_64-unknown-linux-musl/release/composer-linux-musl-${{ env.RELEASE_VERSION }}
 
-      - name: Upload musl binary to release
-        uses: actions/upload-release-asset@v1
+      - name: Upload latest to latest release
+        uses: xresloader/upload-to-github-release@v1
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
-          upload_url: ${{ github.event.workflow_run.artifacts_url }}
-          asset_path: ./target/x86_64-unknown-linux-musl/release/composer-linux-musl-${{ env.RELEASE_VERSION }}
-          asset_name: composer-linux-musl-${{ env.RELEASE_VERSION }}
-          asset_content_type: application/octet-stream
+          file: "./target/x86_64-unknown-linux-musl/release/composer-linux-musl-${{ env.RELEASE_VERSION }}"
+          update_latest_release: true
 
   create-rpm:
     needs: release
@@ -271,7 +268,7 @@ jobs:
       - name: Overwrite version in Cargo.toml
         run: |
           $content = Get-Content Cargo.toml -Raw
-          $content = $content -replace 'version = ".*"', "version = ""${{ env.RELEASE_VERSION }}"""
+          $content = $content -replace 'version = "0.0.0"', "version = ""${{ env.RELEASE_VERSION }}"""
           $content | Set-Content Cargo.toml
 
       - name: Build release binary
@@ -281,12 +278,10 @@ jobs:
         run: |
           mv target/x86_64-pc-windows-msvc/release/composer.exe target/x86_64-pc-windows-msvc/release/composer-windows-${{ env.RELEASE_VERSION }}.exe
 
-      - name: Upload binary to release
-        uses: actions/upload-release-asset@v1
+      - name: Upload latest to latest release
+        uses: xresloader/upload-to-github-release@v1
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
-          upload_url: ${{ github.event.workflow_run.artifacts_url }}
-          asset_path: ./target/x86_64-pc-windows-msvc/release/composer-windows-${{ env.RELEASE_VERSION }}.exe
-          asset_name: composer-windows-${{ env.RELEASE_VERSION }}.exe
-          asset_content_type: application/octet-stream
+          file: "./target/x86_64-pc-windows-msvc/release/composer-windows-${{ env.RELEASE_VERSION }}.exe"
+          update_latest_release: true
