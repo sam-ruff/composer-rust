@@ -1,0 +1,83 @@
+name: "Build and Upload Binaries"
+
+permissions:
+  contents: write
+
+on:
+  workflow_run:
+    workflows: ["Release"]
+    types:
+      - completed
+
+jobs:
+  build:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v2
+
+      - name: Set up Rust
+        uses: actions-rs/toolchain@v1
+        with:
+          profile: minimal
+          toolchain: stable
+          override: true
+
+      - name: Overwrite version in Cargo.toml
+        run: sed -i "s/^version = .*/version = \"${{ env.RELEASE_VERSION }}\"/" Cargo.toml
+
+      - name: Build release binary
+        run: cargo build --release --target ${{ matrix.target }}
+
+      - name: Rename binary
+        run: |
+          mv target/${{ matrix.target }}/release/composer target/${{ matrix.target }}/release/composer-${{ matrix.os }}-${{ env.RELEASE_VERSION }}
+
+      - name: Upload binary to release
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ github.event.workflow_run.artifacts_url }}
+          asset_path: ./target/${{ matrix.target }}/release/composer-${{ matrix.os }}-${{ env.RELEASE_VERSION }}
+          asset_name: composer-${{ matrix.os }}-${{ env.RELEASE_VERSION }}
+          asset_content_type: application/octet-stream
+
+  # Additional configuration for non-glibc Linux builds (e.g., musl)
+  build-linux-musl:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v2
+
+      - name: Set up Rust with musl target
+        uses: actions-rs/toolchain@v1
+        with:
+          profile: minimal
+          toolchain: stable
+          target: x86_64-unknown-linux-musl
+          override: true
+
+      - name: Overwrite version in Cargo.toml for musl build
+        run: sed -i "s/^version = .*/version = \"${{ env.RELEASE_VERSION }}\"/" Cargo.toml
+
+
+      - name: Build release binary with musl
+        run: cargo build --release --target x86_64-unknown-linux-musl
+
+      - name: Rename binary for musl
+        run: |
+          mv target/x86_64-unknown-linux-musl/release/composer target/x86_64-unknown-linux-musl/release/composer-linux-musl-${{ env.RELEASE_VERSION }}
+
+      - name: Upload musl binary to release
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ github.event.workflow_run.artifacts_url }}
+          asset_path: ./target/x86_64-unknown-linux-musl/release/composer-linux-musl-${{ env.RELEASE_VERSION }}
+          asset_name: composer-linux-musl-${{ env.RELEASE_VERSION }}
+          asset_content_type: application/octet-stream

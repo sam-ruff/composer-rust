@@ -5,7 +5,7 @@ permissions:
 
 on:
   workflow_run:
-    workflows: ["Release"]
+    workflows: ["Build and Upload Binaries"]
     types:
       - completed
 
@@ -34,7 +34,7 @@ jobs:
       - name: Prepare RPM spec file
         run: |
           export APP_NAME="composer"
-          export APP_VERSION="1.${{github.run_number}}"
+          export APP_VERSION="${{ env.RELEASE_VERSION }}"
           export APP_SUMMARY="A docker-compose package manager."
           export APP_LICENSE="MIT"
           export APP_URL="https://github.com/ByteSquid/composer-rust"
@@ -62,12 +62,12 @@ jobs:
 
       - name: Copy RPM
         run: |
-          cp /home/runner/rpmbuild/RPMS/x86_64/composer-1.${{github.run_number}}-1.x86_64.rpm composer-1.${{github.run_number}}-1.x86_64.rpm
+          cp /home/runner/rpmbuild/RPMS/x86_64/composer-${{ env.RELEASE_VERSION }}-1.x86_64.rpm composer-${{ env.RELEASE_VERSION }}-1.x86_64.rpm
 
       - name: Push to PackageCloud
         uses: danielmundi/upload-packagecloud@v1
         with:
-          PACKAGE-NAME: composer-1.${{github.run_number}}-1.x86_64.rpm
+          PACKAGE-NAME: composer-${{ env.RELEASE_VERSION }}-1.x86_64.rpm
           PACKAGECLOUD-USERNAME: sam-bytesquid
           PACKAGECLOUD-DISTRIB: rpm_any/rpm_any
           PACKAGECLOUD-REPO: composer-production
@@ -78,5 +78,5 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
-          file: "composer-1.${{github.run_number}}-1.x86_64.rpm"
+          file: "composer-${{ env.RELEASE_VERSION }}-1.x86_64.rpm"
           update_latest_release: true
