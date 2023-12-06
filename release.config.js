@@ -1,7 +1,7 @@
 const EXTERNAL_PIP_INDEX_URL = process.env.EXTERNAL_PIP_INDEX_URL;
 
 const branches = [
-    'main',
+    'master',
     {
         name: 'alpha',
         prerelease: true
