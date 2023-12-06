@@ -28,8 +28,6 @@ jobs:
 
       - name: Download Version File
         uses: actions/download-artifact@v3
-        with:
-          name: version
 
       - name: Read Version File
         id: version
@@ -73,8 +71,6 @@ jobs:
 
       - name: Download Version File
         uses: actions/download-artifact@v3
-        with:
-          name: version
 
       - name: Read Version File
         id: version
