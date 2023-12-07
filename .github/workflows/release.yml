@@ -133,7 +133,7 @@ jobs:
       - name: Rename binary
         shell: bash
         run: |
-          mv target/${{ matrix.target }}/release/composer target/${{ matrix.target }}/release/composer-${{ env.RELEASE_VERSION }}-${{ matrix.os }}-${{ matrix.target }}-${{ env.EXTENSION }}
+          mv target/${{ matrix.target }}/release/composer target/${{ matrix.target }}/release/composer-${{ env.RELEASE_VERSION }}-${{ matrix.os }}-${{ matrix.target }}${{ env.EXTENSION }}
 
       - name: Upload latest to latest release
         uses: xresloader/upload-to-github-release@v1
