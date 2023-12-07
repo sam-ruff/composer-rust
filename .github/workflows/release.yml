@@ -264,11 +264,10 @@ jobs:
 
       - name: Read Version File
         run: |
-          type D:\a\composer-rust\composer-rust\VERSION
-          $version = Get-Content D:\a\composer-rust\composer-rust\VERSION
+          $version = Get-Content D:\a\composer-rust\composer-rust\VERSION | Out-String | ForEach-Object {$_.Trim()}
           echo "RELEASE_VERSION=$version" >> $GITHUB_ENV
           echo "Version is ${{ env.RELEASE_VERSION }}"
-
+      
       - name: Overwrite version in Cargo.toml
         run: |
           $content = Get-Content Cargo.toml -Raw
