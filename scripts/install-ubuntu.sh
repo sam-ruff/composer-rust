@@ -9,8 +9,25 @@ if ! command -v jq &> /dev/null; then
     exit 1
 fi
 
-# Fetch the latest release information and extract the tarball URL
-TARBALL_URL=$(curl -s $API_URL | jq -r '.tarball_url')
+# Fetch the latest release information
+LATEST_RELEASE_JSON=$(curl -s $API_URL)
+if [ -z "$LATEST_RELEASE_JSON" ]; then
+    echo "Failed to fetch release information."
+    exit 1
+fi
+
+# Extract the version number
+VERSION=$(echo $LATEST_RELEASE_JSON | jq -r '.tag_name')
+if [ -z "$VERSION" ]; then
+    echo "Failed to extract version number."
+    exit 1
+fi
+
+# Construct the filename
+FILENAME="composer-$VERSION-ubuntu-latest-x86_64-unknown-linux-gnu"
+
+# Extract the tarball URL
+TARBALL_URL=$(echo $LATEST_RELEASE_JSON | jq -r '.tarball_url')
 if [ -z "$TARBALL_URL" ]; then
     echo "Failed to fetch or parse tarball URL."
     exit 1
@@ -30,12 +47,6 @@ if [ $? -ne 0 ]; then
     exit 1
 fi
 
-# Check if the script argument (specific file) is provided
-if [ -z "$1" ]; then
-    echo "No file specified to download. Please provide a file name as the first argument."
-    exit 1
-fi
-
 # Create $HOME/.local/bin if it doesn't exist
 if [ ! -d "$HOME/.local/bin" ]; then
     mkdir -p "$HOME/.local/bin"
@@ -46,7 +57,7 @@ if [ ! -d "$HOME/.local/bin" ]; then
 fi
 
 # Install the specific file into $HOME/.local/bin
-cp -r "composer-rust-*/$1" "$HOME/.local/bin/"
+cp -r "composer-rust-*/$FILENAME" "$HOME/.local/bin/"
 if [ $? -ne 0 ]; then
     echo "Failed to install the specified file."
     exit 1
