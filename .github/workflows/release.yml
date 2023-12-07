@@ -264,6 +264,8 @@ jobs:
 
       - name: Read Version File
         run: |
+          ls
+          ls D:\a\composer-rust\composer-rust
           $version = Get-Content VERSION
           echo "RELEASE_VERSION=$version" >> $GITHUB_ENV
 
