@@ -155,7 +155,7 @@ jobs:
 
       - name: Overwrite version in Cargo.toml for musl build
         shell: bash
-        run: sed -i.bak -e 's/^version = "0\.0\.0"/version = "2.1.12"/' Cargo.toml && rm -f Cargo.toml.bak
+        run: sed -i.bak -e 's/^version = "0\.0\.0"/version = "${{ env.RELEASE_VERSION }}"/' Cargo.toml && rm -f Cargo.toml.bak
 
 
       - name: Build release binary with musl
