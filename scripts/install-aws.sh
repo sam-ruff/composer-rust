@@ -1,38 +1,62 @@
 #!/bin/bash
 
-# Set environment variables
-export S3_URL="https://composer-releases.s3.eu-west-2.amazonaws.com/composer"
-export BINARY_NAME="composer"
-export INSTALL_DIR="$HOME/.local/bin"
+# Define the GitHub API URL
+API_URL="https://api.github.com/repos/bytesquid/composer-rust/releases/latest"
 
-# Function to download and install the binary
-install_binary() {
-    # Check if the install directory exists, if not, create it
-    if [ ! -d "$INSTALL_DIR" ]; then
-        echo "Creating install directory: $INSTALL_DIR"
-        mkdir -p "$INSTALL_DIR"
-    fi
+# Ensure jq is installed for JSON parsing
+if ! command -v jq &> /dev/null; then
+    echo "jq is not installed. Please install jq for JSON parsing."
+    exit 1
+fi
 
-    # Download the binary from the S3 bucket
-    echo "Downloading binary from $S3_URL"
-    curl -fsSL "$S3_URL" -o "$INSTALL_DIR/$BINARY_NAME"
-    download_status=$?
+# Fetch the latest release information
+LATEST_RELEASE_JSON=$(curl -s $API_URL)
+if [ -z "$LATEST_RELEASE_JSON" ]; then
+    echo "Failed to fetch release information."
+    exit 1
+fi
 
-    if [ $download_status -ne 0 ]; then
-        echo "Error: Unable to download the binary. Please check the URL and try again."
+# Extract the version number
+VERSION=$(echo $LATEST_RELEASE_JSON | jq -r '.tag_name')
+if [ -z "$VERSION" ]; then
+    echo "Failed to extract version number."
+    exit 1
+fi
+
+# Construct the filename
+FILENAME="composer-$VERSION-ubuntu-latest-x86_64-unknown-linux-musl"
+
+# Find the download URL for the specific release file
+DOWNLOAD_URL=$(echo $LATEST_RELEASE_JSON | jq -r --arg FILENAME "$FILENAME" '.assets[] | select(.name == $FILENAME).browser_download_url')
+if [ -z "$DOWNLOAD_URL" ]; then
+    echo "Failed to find download URL for the specified file."
+    exit 1
+fi
+
+# Create $HOME/.local/bin if it doesn't exist
+if [ ! -d "$HOME/.local/bin" ]; then
+    mkdir -p "$HOME/.local/bin"
+    if [ $? -ne 0 ]; then
+        echo "Failed to create $HOME/.local/bin directory."
         exit 1
     fi
+fi
 
-    # Set the binary as executable
-    chmod +x "$INSTALL_DIR/$BINARY_NAME"
-    echo "Binary has been installed to $INSTALL_DIR/$BINARY_NAME"
+# Download the specific file and rename it to 'composer'
+curl -L $DOWNLOAD_URL -o "/tmp/$FILENAME"
+if [ $? -ne 0 ]; then
+    echo "Failed to download the specified file."
+    exit 1
+fi
 
-    # Add the installation directory to the PATH, if not already present
-    if [[ ! ":$PATH:" == *":$INSTALL_DIR:"* ]]; then
-        echo 'export PATH=$PATH:'"$INSTALL_DIR" >> "$HOME/.bashrc"
-        echo "Installation directory added to PATH. Please restart your terminal or run 'source ~/.bashrc' to update the PATH."
-    fi
-}
+# Move and rename the file to $HOME/.local/bin/composer
+mv "/tmp/$FILENAME" "$HOME/.local/bin/composer"
+if [ $? -ne 0 ]; then
+    echo "Failed to move and rename the file."
+    exit 1
+fi
 
-# Call the function to install the binary
-install_binary
+# Make the file executable
+chmod +x "$HOME/.local/bin/composer"
+
+echo "Operation completed successfully."
