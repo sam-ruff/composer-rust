@@ -25,7 +25,7 @@ For AWS Linux 2:
 ```bash
 curl -fsSL https://raw.githubusercontent.com/ByteSquid/composer-rust/master/scripts/install-aws.sh | bash
 ```
-For other platforms, clone the repository and build the binary:
+For other platforms, clone the repository and build the binary.
 ## Binaries
 The latest releases for OSX, Linux and Windows can be found here.
 ```
