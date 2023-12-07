@@ -42,14 +42,21 @@ if [ ! -d "$HOME/.local/bin" ]; then
     fi
 fi
 
-# Download the specific file into $HOME/.local/bin
-curl -L $DOWNLOAD_URL -o "$HOME/.local/bin/$FILENAME"
+# Download the specific file and rename it to 'composer'
+curl -L $DOWNLOAD_URL -o "/tmp/$FILENAME"
 if [ $? -ne 0 ]; then
     echo "Failed to download the specified file."
     exit 1
 fi
 
-# Optionally, make the file executable
-chmod +x "$HOME/.local/bin/$FILENAME"
+# Move and rename the file to $HOME/.local/bin/composer
+mv "/tmp/$FILENAME" "$HOME/.local/bin/composer"
+if [ $? -ne 0 ]; then
+    echo "Failed to move and rename the file."
+    exit 1
+fi
+
+# Make the file executable
+chmod +x "$HOME/.local/bin/composer"
 
 echo "Operation completed successfully."
