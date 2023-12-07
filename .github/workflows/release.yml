@@ -133,70 +133,15 @@ jobs:
       - name: Rename binary
         shell: bash
         run: |
-          mv target/${{ matrix.target }}/release/composer target/${{ matrix.target }}/release/composer-${{ matrix.os }}-${{ env.RELEASE_VERSION }}${{ env.EXTENSION }}
+          mv target/${{ matrix.target }}/release/composer target/${{ matrix.target }}/release/composer-${{ env.RELEASE_VERSION }}-${{ matrix.os }}-${{ matrix.target }}-${{ env.EXTENSION }}
 
       - name: Upload latest to latest release
         uses: xresloader/upload-to-github-release@v1
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
-          file: "target/${{ matrix.target }}/release/composer-${{ matrix.os }}-${{ env.RELEASE_VERSION }}${{ env.EXTENSION }}"
+          file: "target/${{ matrix.target }}/release/composer-${{ env.RELEASE_VERSION }}-${{ matrix.os }}-${{ matrix.target }}-${{ env.EXTENSION }}"
           update_latest_release: true
-
-
-  # Additional configuration for non-glibc Linux builds (e.g., musl)
-#  build-linux-musl:
-#    needs: release
-#    runs-on: ubuntu-latest
-#    steps:
-#      - name: Check out repository
-#        uses: actions/checkout@v2
-#
-#      - name: Setup zig for cross-compile
-#        run: sudo apt-get -y install musl && sudo snap install zig --beta --classic
-#
-      - name: Set up Rust with musl target
-        uses: actions-rs/toolchain@v1
-        with:
-          profile: minimal
-          toolchain: stable
-          target: x86_64-unknown-linux-musl
-          override: true
-#
-#      - name: Download Version File
-#        uses: actions/download-artifact@v3
-#        with:
-#          name: version
-#
-#      - name: Download Version File
-#        uses: actions/download-artifact@v3
-#
-#      - name: Read Version File
-#        shell: bash
-#        run: echo "RELEASE_VERSION=$(cat VERSION)" >> $GITHUB_ENV
-#
-#
-#      - name: Overwrite version in Cargo.toml for musl build
-#        shell: bash
-#        run: sed -i.bak -e 's/^version = "0\.0\.0"/version = "${{ env.RELEASE_VERSION }}"/' Cargo.toml && rm -f Cargo.toml.bak
-#
-#
-#      - name: Build release binary with musl
-#        run: |
-#          cargo install cargo-zigbuild
-#          cargo zigbuild --release --target x86_64-unknown-linux-musl
-#
-#      - name: Rename binary for musl
-#        run: |
-#          mv target/x86_64-unknown-linux-musl/release/composer target/x86_64-unknown-linux-musl/release/composer-linux-musl-${{ env.RELEASE_VERSION }}
-#
-#      - name: Upload latest to latest release
-#        uses: xresloader/upload-to-github-release@v1
-#        env:
-#          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-#        with:
-#          file: "./target/x86_64-unknown-linux-musl/release/composer-linux-musl-${{ env.RELEASE_VERSION }}"
-#          update_latest_release: true
 
   create-rpm:
     needs: release
