@@ -140,7 +140,7 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
-          file: "target/${{ matrix.target }}/release/composer-${{ env.RELEASE_VERSION }}-${{ matrix.os }}-${{ matrix.target }}-${{ env.EXTENSION }}"
+          file: "target/${{ matrix.target }}/release/composer-${{ env.RELEASE_VERSION }}-${{ matrix.os }}-${{ matrix.target }}${{ env.EXTENSION }}"
           update_latest_release: true
 
   create-rpm:
