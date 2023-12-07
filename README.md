@@ -21,7 +21,7 @@ To install Composer, run the following command for Ubuntu/Rocky:
 ```bash
 curl -fsSL https://raw.githubusercontent.com/ByteSquid/composer-rust/master/scripts/install-linux.sh | bash
 ```
-For AWS Linux 2 (if this is out of date when you check the version, please install from source):
+For AWS Linux 2:
 ```bash
 curl -fsSL https://raw.githubusercontent.com/ByteSquid/composer-rust/master/scripts/install-aws.sh | bash
 ```
