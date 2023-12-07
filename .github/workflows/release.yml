@@ -65,6 +65,8 @@ jobs:
             target: x86_64-unknown-linux-gnu
           - os: macos-latest
             target: x86_64-apple-darwin
+          - os: windows-latest
+            target: x86_64-pc-windows-msvc
 
     steps:
       - name: Check out repository
@@ -83,17 +85,21 @@ jobs:
           name: version
 
       - name: Read Version File
+        shell: bash
         run: echo "RELEASE_VERSION=$(cat VERSION)" >> $GITHUB_ENV
 
       - name: Overwrite version in Cargo.toml
+        shell: bash
         run: |
           sed -i.bak -e 's/^version = "0\.0\.0"/version = "2.1.12"/' Cargo.toml && rm -f Cargo.toml.bak
       
 
       - name: Build release binary
+        shell: bash
         run: cargo build --release --target ${{ matrix.target }}
 
       - name: Rename binary
+        shell: bash
         run: |
           mv target/${{ matrix.target }}/release/composer target/${{ matrix.target }}/release/composer-${{ matrix.os }}-${{ env.RELEASE_VERSION }}
 
@@ -130,18 +136,16 @@ jobs:
         with:
           name: version
 
-      - name: Read Version File
-        run: echo "RELEASE_VERSION=$(cat VERSION)" >> $GITHUB_ENV
-
       - name: Download Version File
         uses: actions/download-artifact@v3
 
       - name: Read Version File
-        id: version
-        run: ls && echo "RELEASE_VERSION=$(cat VERSION)" >> $GITHUB_ENV
+        shell: bash
+        run: echo "RELEASE_VERSION=$(cat VERSION)" >> $GITHUB_ENV
 
 
       - name: Overwrite version in Cargo.toml for musl build
+        shell: bash
         run: sed -i.bak -e 's/^version = "0\.0\.0"/version = "2.1.12"/' Cargo.toml && rm -f Cargo.toml.bak
 
 
@@ -242,48 +246,48 @@ jobs:
           file: "composer-${{ env.RELEASE_VERSION }}-1.x86_64.rpm"
           update_latest_release: true
 
-  build-windows:
-    needs: release
-    runs-on: windows-latest
-
-    steps:
-      - name: Check out repository
-        uses: actions/checkout@v2
-
-      - name: Set up Rust
-        uses: actions-rs/toolchain@v1
-        with:
-          profile: minimal
-          toolchain: stable
-          override: true
-
-      - name: Download Version File
-        uses: actions/download-artifact@v3
-        with:
-          name: version
-
-      - name: Read Version File
-        shell: bash
-        run: |
-          echo "RELEASE_VERSION=$(cat VERSION)" >> $GITHUB_ENV
-
-      - name: Overwrite version in Cargo.toml
-        run: |
-          $content = Get-Content Cargo.toml -Raw
-          $content = $content -replace 'version = "0.0.0"', "version = ""${{ env.RELEASE_VERSION }}"""
-          $content | Set-Content Cargo.toml
-
-      - name: Build release binary
-        run: cargo build --release --target x86_64-pc-windows-msvc
-
-      - name: Rename binary
-        run: |
-          mv target/x86_64-pc-windows-msvc/release/composer.exe target/x86_64-pc-windows-msvc/release/composer-windows-${{ env.RELEASE_VERSION }}.exe
-
-      - name: Upload latest to latest release
-        uses: xresloader/upload-to-github-release@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          file: "./target/x86_64-pc-windows-msvc/release/composer-windows-${{ env.RELEASE_VERSION }}.exe"
-          update_latest_release: true
+#  build-windows:
+#    needs: release
+#    runs-on: windows-latest
+#
+#    steps:
+#      - name: Check out repository
+#        uses: actions/checkout@v2
+#
+#      - name: Set up Rust
+#        uses: actions-rs/toolchain@v1
+#        with:
+#          profile: minimal
+#          toolchain: stable
+#          override: true
+#
+#      - name: Download Version File
+#        uses: actions/download-artifact@v3
+#        with:
+#          name: version
+#
+#      - name: Read Version File
+#        shell: bash
+#        run: |
+#          echo "RELEASE_VERSION=$(cat VERSION)" >> $GITHUB_ENV
+#
+#      - name: Overwrite version in Cargo.toml
+#        run: |
+#          $content = Get-Content Cargo.toml -Raw
+#          $content = $content -replace 'version = "0.0.0"', "version = ""${{ env.RELEASE_VERSION }}"""
+#          $content | Set-Content Cargo.toml
+#
+#      - name: Build release binary
+#        run: cargo build --release --target x86_64-pc-windows-msvc
+#
+#      - name: Rename binary
+#        run: |
+#          mv target/x86_64-pc-windows-msvc/release/composer.exe target/x86_64-pc-windows-msvc/release/composer-windows-${{ env.RELEASE_VERSION }}.exe
+#
+#      - name: Upload latest to latest release
+#        uses: xresloader/upload-to-github-release@v1
+#        env:
+#          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+#        with:
+#          file: "./target/x86_64-pc-windows-msvc/release/composer-windows-${{ env.RELEASE_VERSION }}.exe"
+#          update_latest_release: true
