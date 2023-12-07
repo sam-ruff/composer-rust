@@ -110,6 +110,7 @@ jobs:
             cargo zigbuild --release --target ${{ matrix.target }}
           else
             cargo build --release --target ${{ matrix.target }}
+          fi
 
       - name: Set file extension for Windows
         shell: bash
