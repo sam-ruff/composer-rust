@@ -98,17 +98,26 @@ jobs:
         shell: bash
         run: cargo build --release --target ${{ matrix.target }}
 
+      - name: Set file extension for Windows
+        id: set_extension
+        run: |
+          if [[ ${{ matrix.os }} == "windows-latest" ]]; then
+            echo "EXTENSION=.exe" >> $GITHUB_ENV
+          else
+            echo "EXTENSION=" >> $GITHUB_ENV
+          fi
+
       - name: Rename binary
         shell: bash
         run: |
-          mv target/${{ matrix.target }}/release/composer target/${{ matrix.target }}/release/composer-${{ matrix.os }}-${{ env.RELEASE_VERSION }}
+          mv target/${{ matrix.target }}/release/composer target/${{ matrix.target }}/release/composer-${{ matrix.os }}-${{ env.RELEASE_VERSION }}${{ env.EXTENSION }}
 
       - name: Upload latest to latest release
         uses: xresloader/upload-to-github-release@v1
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
-          file: "target/${{ matrix.target }}/release/composer-${{ matrix.os }}-${{ env.RELEASE_VERSION }}"
+          file: "target/${{ matrix.target }}/release/composer-${{ matrix.os }}-${{ env.RELEASE_VERSION }}${{ env.EXTENSION }}"
           update_latest_release: true
 
 
