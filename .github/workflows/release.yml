@@ -263,11 +263,10 @@ jobs:
           name: version
 
       - name: Read Version File
+        shell: bash
         run: |
-          $version = Get-Content D:\a\composer-rust\composer-rust\VERSION | Out-String | ForEach-Object {$_.Trim()}
-          echo "RELEASE_VERSION=$version" >> $GITHUB_ENV
-          echo "Version is ${{ env.RELEASE_VERSION }}"
-      
+          echo "RELEASE_VERSION=$(cat VERSION)" >> $GITHUB_ENV
+
       - name: Overwrite version in Cargo.toml
         run: |
           $content = Get-Content Cargo.toml -Raw
