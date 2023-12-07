@@ -63,6 +63,8 @@ jobs:
         include:
           - os: ubuntu-latest
             target: x86_64-unknown-linux-gnu
+          - os: ubuntu-latest
+            target: x86_64-unknown-linux-musl
           - os: macos-latest
             target: x86_64-apple-darwin
           - os: windows-latest
@@ -79,6 +81,12 @@ jobs:
           toolchain: stable
           override: true
 
+      - name: Setup zig for cross-compile (for musl targets)
+        if: endsWith(matrix.target, 'linux-musl')
+        shell: bash
+        run: sudo apt-get -y install musl && sudo snap install zig --beta --classic
+
+
       - name: Download Version File
         uses: actions/download-artifact@v3
         with:
@@ -91,12 +99,17 @@ jobs:
       - name: Overwrite version in Cargo.toml
         shell: bash
         run: |
-          sed -i.bak -e 's/^version = "0\.0\.0"/version = "2.1.12"/' Cargo.toml && rm -f Cargo.toml.bak
+          sed -i.bak -e 's/^version = "0\.0\.0"/version = "${{ env.RELEASE_VERSION }}"/' Cargo.toml && rm -f Cargo.toml.bak
       
 
       - name: Build release binary
         shell: bash
-        run: cargo build --release --target ${{ matrix.target }}
+        run: |
+          if [[ "${{ matrix.target }}" == "x86_64-unknown-linux-musl" ]]; then
+            cargo install cargo-zigbuild
+            cargo zigbuild --release --target ${{ matrix.target }}
+          else
+            cargo build --release --target ${{ matrix.target }}
 
       - name: Set file extension for Windows
         shell: bash
@@ -122,58 +135,58 @@ jobs:
 
 
   # Additional configuration for non-glibc Linux builds (e.g., musl)
-  build-linux-musl:
-    needs: release
-    runs-on: ubuntu-latest
-    steps:
-      - name: Check out repository
-        uses: actions/checkout@v2
-
-      - name: Setup zig for cross-compile
-        run: sudo apt-get -y install musl && sudo snap install zig --beta --classic
-
-      - name: Set up Rust with musl target
-        uses: actions-rs/toolchain@v1
-        with:
-          profile: minimal
-          toolchain: stable
-          target: x86_64-unknown-linux-musl
-          override: true
-
-      - name: Download Version File
-        uses: actions/download-artifact@v3
-        with:
-          name: version
-
-      - name: Download Version File
-        uses: actions/download-artifact@v3
-
-      - name: Read Version File
-        shell: bash
-        run: echo "RELEASE_VERSION=$(cat VERSION)" >> $GITHUB_ENV
-
-
-      - name: Overwrite version in Cargo.toml for musl build
-        shell: bash
-        run: sed -i.bak -e 's/^version = "0\.0\.0"/version = "${{ env.RELEASE_VERSION }}"/' Cargo.toml && rm -f Cargo.toml.bak
-
-
-      - name: Build release binary with musl
-        run: |
-          cargo install cargo-zigbuild
-          cargo zigbuild --release --target x86_64-unknown-linux-musl
-
-      - name: Rename binary for musl
-        run: |
-          mv target/x86_64-unknown-linux-musl/release/composer target/x86_64-unknown-linux-musl/release/composer-linux-musl-${{ env.RELEASE_VERSION }}
-
-      - name: Upload latest to latest release
-        uses: xresloader/upload-to-github-release@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          file: "./target/x86_64-unknown-linux-musl/release/composer-linux-musl-${{ env.RELEASE_VERSION }}"
-          update_latest_release: true
+#  build-linux-musl:
+#    needs: release
+#    runs-on: ubuntu-latest
+#    steps:
+#      - name: Check out repository
+#        uses: actions/checkout@v2
+#
+#      - name: Setup zig for cross-compile
+#        run: sudo apt-get -y install musl && sudo snap install zig --beta --classic
+#
+#      - name: Set up Rust with musl target
+#        uses: actions-rs/toolchain@v1
+#        with:
+#          profile: minimal
+#          toolchain: stable
+#          target: x86_64-unknown-linux-musl
+#          override: true
+#
+#      - name: Download Version File
+#        uses: actions/download-artifact@v3
+#        with:
+#          name: version
+#
+#      - name: Download Version File
+#        uses: actions/download-artifact@v3
+#
+#      - name: Read Version File
+#        shell: bash
+#        run: echo "RELEASE_VERSION=$(cat VERSION)" >> $GITHUB_ENV
+#
+#
+#      - name: Overwrite version in Cargo.toml for musl build
+#        shell: bash
+#        run: sed -i.bak -e 's/^version = "0\.0\.0"/version = "${{ env.RELEASE_VERSION }}"/' Cargo.toml && rm -f Cargo.toml.bak
+#
+#
+#      - name: Build release binary with musl
+#        run: |
+#          cargo install cargo-zigbuild
+#          cargo zigbuild --release --target x86_64-unknown-linux-musl
+#
+#      - name: Rename binary for musl
+#        run: |
+#          mv target/x86_64-unknown-linux-musl/release/composer target/x86_64-unknown-linux-musl/release/composer-linux-musl-${{ env.RELEASE_VERSION }}
+#
+#      - name: Upload latest to latest release
+#        uses: xresloader/upload-to-github-release@v1
+#        env:
+#          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+#        with:
+#          file: "./target/x86_64-unknown-linux-musl/release/composer-linux-musl-${{ env.RELEASE_VERSION }}"
+#          update_latest_release: true
 
   create-rpm:
     needs: release
