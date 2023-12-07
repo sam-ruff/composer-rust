@@ -76,9 +76,19 @@ jobs:
 
       - name: Set up Rust
         uses: actions-rs/toolchain@v1
+        if: !endsWith(matrix.target, 'linux-musl')
         with:
           profile: minimal
           toolchain: stable
+          override: true
+
+      - name: Set up Rust with musl target
+        uses: actions-rs/toolchain@v1
+        if: endsWith(matrix.target, 'linux-musl')
+        with:
+          profile: minimal
+          toolchain: stable
+          target: x86_64-unknown-linux-musl
           override: true
 
       - name: Setup zig for cross-compile (for musl targets)
@@ -146,13 +156,13 @@ jobs:
 #      - name: Setup zig for cross-compile
 #        run: sudo apt-get -y install musl && sudo snap install zig --beta --classic
 #
-#      - name: Set up Rust with musl target
-#        uses: actions-rs/toolchain@v1
-#        with:
-#          profile: minimal
-#          toolchain: stable
-#          target: x86_64-unknown-linux-musl
-#          override: true
+      - name: Set up Rust with musl target
+        uses: actions-rs/toolchain@v1
+        with:
+          profile: minimal
+          toolchain: stable
+          target: x86_64-unknown-linux-musl
+          override: true
 #
 #      - name: Download Version File
 #        uses: actions/download-artifact@v3
