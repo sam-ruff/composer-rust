@@ -99,7 +99,7 @@ jobs:
         run: cargo build --release --target ${{ matrix.target }}
 
       - name: Set file extension for Windows
-        id: set_extension
+        shell: bash
         run: |
           if [[ ${{ matrix.os }} == "windows-latest" ]]; then
             echo "EXTENSION=.exe" >> $GITHUB_ENV
