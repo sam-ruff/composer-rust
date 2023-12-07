@@ -26,24 +26,10 @@ fi
 # Construct the filename
 FILENAME="composer-$VERSION-ubuntu-latest-x86_64-unknown-linux-gnu"
 
-# Extract the tarball URL
-TARBALL_URL=$(echo $LATEST_RELEASE_JSON | jq -r '.tarball_url')
-if [ -z "$TARBALL_URL" ]; then
-    echo "Failed to fetch or parse tarball URL."
-    exit 1
-fi
-
-# Download the tarball
-curl -L $TARBALL_URL -o release.tar.gz
-if [ $? -ne 0 ]; then
-    echo "Failed to download the tarball."
-    exit 1
-fi
-
-# Untar the downloaded file
-tar -xzf release.tar.gz
-if [ $? -ne 0 ]; then
-    echo "Failed to extract the tarball."
+# Find the download URL for the specific release file
+DOWNLOAD_URL=$(echo $LATEST_RELEASE_JSON | jq -r --arg FILENAME "$FILENAME" '.assets[] | select(.name == $FILENAME).browser_download_url')
+if [ -z "$DOWNLOAD_URL" ]; then
+    echo "Failed to find download URL for the specified file."
     exit 1
 fi
 
@@ -56,14 +42,14 @@ if [ ! -d "$HOME/.local/bin" ]; then
     fi
 fi
 
-# Install the specific file into $HOME/.local/bin
-cp -r "composer-rust-*/$FILENAME" "$HOME/.local/bin/"
+# Download the specific file into $HOME/.local/bin
+curl -L $DOWNLOAD_URL -o "$HOME/.local/bin/$FILENAME"
 if [ $? -ne 0 ]; then
-    echo "Failed to install the specified file."
+    echo "Failed to download the specified file."
     exit 1
 fi
 
-# Clean up: Remove the downloaded tarball and the extracted directory
-rm -rf release.tar.gz composer-rust-*
+# Optionally, make the file executable
+chmod +x "$HOME/.local/bin/$FILENAME"
 
 echo "Operation completed successfully."
