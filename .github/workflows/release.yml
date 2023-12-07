@@ -263,9 +263,9 @@ jobs:
           name: version
 
       - name: Read Version File
-          run: |
-            $version = Get-Content VERSION
-            echo "RELEASE_VERSION=$version" >> $GITHUB_ENV
+        run: |
+          $version = Get-Content VERSION
+          echo "RELEASE_VERSION=$version" >> $GITHUB_ENV
 
       - name: Overwrite version in Cargo.toml
         run: |
