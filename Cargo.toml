@@ -12,7 +12,7 @@ resolver = "2"
 lto = true
 # Strip debugging symbols https://doc.rust-lang.org/cargo/reference/profiles.html#strip
 strip = true
-# Reduce build parallisation but faster compiled binary https://doc.rust-lang.org/cargo/reference/profiles.html#codegen-units
+# Reduce build parallelisation but faster compiled binary https://doc.rust-lang.org/cargo/reference/profiles.html#codegen-units
 codegen-units = 1
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
