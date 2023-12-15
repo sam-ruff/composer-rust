@@ -142,7 +142,6 @@ pub fn is_compose_installed() -> bool {
             }
         },
         Err(_) => {
-            error!("docker-compose is not installed. Please install it and try again.");
             false
         }
     }
