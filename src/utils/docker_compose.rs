@@ -132,10 +132,20 @@ pub fn compose_down(path: &str, application_id: &str) {
 }
 
 pub fn is_compose_installed() -> bool {
-    silent_run(&["docker-compose", "version"])
-        .status()
-        .unwrap()
-        .success()
+    match silent_run(&["docker-compose", "version"]).status() {
+        Ok(status) => {
+            if status.success() {
+                true
+            } else {
+                error!("docker-compose is installed but returned an error.");
+                false
+            }
+        },
+        Err(_) => {
+            error!("docker-compose is not installed. Please install it and try again.");
+            false
+        }
+    }
 }
 
 pub fn silent_run(args: &[&str]) -> Command {
