@@ -63,6 +63,7 @@ chmod +x "$HOME/.local/bin/composer"
 if [[ ":$PATH:" != *":$HOME/.local/bin:"* ]]; then
     echo "Adding $HOME/.local/bin to PATH"
     export PATH="$HOME/.local/bin:$PATH"
+    echo 'export PATH="$HOME/.local/bin:$PATH"' >> ~/.bashrc
 fi
 
-echo "Composer is now installed, do `composer --version` to confirm."
+echo "Composer is now installed, do \"composer --version\" to confirm. You may need to restart your terminal session."
