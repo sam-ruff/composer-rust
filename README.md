@@ -14,7 +14,8 @@ Composer is a command line tool similar to Helm, but designed for Docker Compose
 
 ## Prerequisites
 - Docker
-- Docker Compose
+- Docker Compose (specifically the plugin version `docker-compose` not `docker compose`.
+- jq for installation script
 
 ## Getting Started
 To install Composer, run the following command for Ubuntu/Rocky:
