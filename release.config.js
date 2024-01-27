@@ -7,9 +7,6 @@ const branches = [
         prerelease: true
     }
 ];
-
-const commitAnalyzer = '@semantic-release/commit-analyzer';
-
 const git = '@semantic-release/git';
 
 const exec = [
@@ -21,5 +18,20 @@ const exec = [
 
 module.exports = {
     branches,
-    plugins: [commitAnalyzer, git, exec]
+    plugins: [
+        [
+            "@semantic-release/commit-analyzer",
+            {
+                preset: "angular",
+                releaseRules: [
+                    { type: "breaking", release: "major" },
+                ],
+                parserOpts: {
+                    noteKeywords: ["BREAKING CHANGE", "BREAKING CHANGES", "breaking:"]
+                }
+            }
+        ],
+        git,
+        exec
+    ]
 };
