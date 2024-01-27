@@ -5,7 +5,8 @@ const branches = [
     {
         name: 'alpha',
         prerelease: true
-    }
+    },
+    'update-release-config'
 ];
 const git = '@semantic-release/git';
 
