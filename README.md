@@ -14,7 +14,7 @@ Composer is a command line tool similar to Helm, but designed for Docker Compose
 
 ## Prerequisites
 - Docker
-- Docker Compose (specifically the plugin version `docker-compose` not `docker compose`).
+- Docker Compose (specifically `docker compose` not `docker-compose` python plugin, so you need a relatively up-to-date version of docker).
 - jq for installation script
 
 ## Getting Started
@@ -61,12 +61,15 @@ git clone https://github.com/ByteSquid/composer-rust.git
 cd composer-rust
 cargo build --release
 ```
-Copy the binary to a location in your PATH, e.g. `/usr/local/bin`:
+Copy the binary to a location in your PATH, e.g. `$HOME/.local/bin`:
 ```bash
-sudo cp target/release/composer /usr/local/bin
+mkdir -p 
+cp target/release/composer $HOME/.local/bin
 # If you dont have /usr/local/bin on your path
-echo 'export PATH="/usr/local/bin:$PATH"' >> ~/.bashrc
+echo 'export PATH="$HOME/.local/bin:$PATH"' >> ~/.bashrc
 source ~/.bashrc
+# You can then verify with the command
+composer --version
 ```
 
 ## Usage
@@ -128,6 +131,26 @@ To delete the application:
 ```bash
 composer delete example
 ```
-
+## Nested Compose files
+You can nest docker-compose.jinja2 files in sub-directories and they will be started up as a single app. This is useful for managing complex deployments as a single unit globally.
+## Composer Ignore
+When you do `composer install` the working directory is copied into `~/.composer/` and the templates are applied. If you don't want certain unnecessary files to be copied such as large files. 
+Add them to a file at the root `.composerignore`. This has the same syntax as `.dockerignore` files.
+## Templating config
+All files with the file extension `.jinja2` will be templated. This is useful for also templating config files etc. that are going to be mounted into a container.
+We recommend using a pattern such as the following (using nginx config as an example):
+```yaml
+version: "3.9"
+services:
+  frontend:
+    restart: unless-stopped
+    container_name: nginx
+    image: {{ registry }}/{{ nginx.image }}:{{ nginx.image_version }}
+    volumes:
+      - type: bind
+        source: config.jinja2
+        target: /usr/share/nginx/html/config/config.json
+```
+In this example a templated config file is mounted in as `.json` so that its picked up correctly post-templating. This can be very powerful when switching between environments.
 ## Contributing
 Contributions are welcome! Please submit a pull request or create an issue to discuss any changes.

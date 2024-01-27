@@ -303,7 +303,7 @@ dependencies = [
 
 [[package]]
 name = "composer"
-version = "2.0.60"
+version = "0.0.0"
 dependencies = [
  "anyhow",
  "assert_matches",
@@ -314,6 +314,7 @@ dependencies = [
  "dirs",
  "env_logger 0.10.0",
  "gitignore",
+ "libc",
  "log",
  "log4rs",
  "minijinja",
@@ -962,9 +963,9 @@ checksum = "830d08ce1d1d941e6b30645f1a0eb5643013d835ce3779a5fc208261dbe10f55"
 
 [[package]]
 name = "libc"
-version = "0.2.139"
+version = "0.2.151"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "201de327520df007757c1f0adce6e827fe8562fbc28bfd9c15571c66ca1f5f79"
+checksum = "302d7ab3130588088d277783b1e2d2e10c9e9e4a16dd9050e6ec93fb3e7048f4"
 
 [[package]]
 name = "line-wrap"

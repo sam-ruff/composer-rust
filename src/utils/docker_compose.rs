@@ -44,14 +44,14 @@ pub fn compose_up(path: &str, application_id: &str) -> anyhow::Result<()> {
         );
         return Ok(());
     }
-    trace!("[EXEC] docker-compose up {}", path);
+    trace!("[EXEC] docker compose up {}", path);
     let exit_code =
-        unbuffered_command(&["docker-compose", "-f", path, "up", "-d", "--remove-orphans"]);
+        unbuffered_command(&["docker", "compose", "-f", path, "up", "-d", "--remove-orphans"]);
 
     if exit_code != 0 {
         update_application_state(application_id, ERROR)
             .expect("Could not update application state.");
-        error!("docker-compose up has failed for app {}", application_id);
+        error!("docker compose up has failed for app {}", application_id);
         std::process::exit(exit_code);
     }
     Ok(())
@@ -109,7 +109,7 @@ fn compose_has_no_services(compose_path: &str) -> bool {
 }
 
 pub fn compose_down(path: &str, application_id: &str) {
-    trace!("[EXEC] docker-compose down {}", path);
+    trace!("[EXEC] docker compose down {}", path);
     if compose_has_no_services(path) {
         // This is a valid use-case for sub-compose files
         // they should be skipped if no services are created
@@ -119,25 +119,25 @@ pub fn compose_down(path: &str, application_id: &str) {
         );
         return;
     }
-    let exit_code = unbuffered_command(&["docker-compose", "-f", path, "down", "--remove-orphans"]);
+    let exit_code = unbuffered_command(&["docker", "compose", "-f", path, "down", "--remove-orphans"]);
 
     if exit_code != 0 {
         update_application_state(application_id, ERROR)
             .expect("Could not update application state.");
         error!(
-            "docker-compose down has failed for app {}. Some containers may still persist.",
+            "docker compose down has failed for app {}. Some containers may still persist.",
             application_id
         );
     }
 }
 
 pub fn is_compose_installed() -> bool {
-    match silent_run(&["docker-compose", "version"]).status() {
+    match silent_run(&["docker", "compose", "version"]).status() {
         Ok(status) => {
             if status.success() {
                 true
             } else {
-                error!("docker-compose is installed but returned an error.");
+                error!("docker compose is installed but returned an error.");
                 false
             }
         },
@@ -157,7 +157,8 @@ pub fn silent_run(args: &[&str]) -> Command {
 
 pub fn compose_pull(path: &str) {
     let command_to_run = [
-        "docker-compose",
+        "docker",
+        "compose",
         "-f",
         path,
         "pull",

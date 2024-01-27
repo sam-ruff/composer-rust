@@ -17,7 +17,7 @@ pub struct Delete {
     pub all: bool,
 }
 
-// Call docker-compose down on all docker-compose.jinja2 files for this application
+// Call docker compose down on all docker-compose.jinja2 files for this application
 fn compose_down_by_id(id: &str) -> anyhow::Result<()> {
     // Ensure the .composer directory exists
     let composer_directory = get_composer_directory()?;

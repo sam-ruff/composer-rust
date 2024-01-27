@@ -25,7 +25,7 @@ pub enum Cmd {
     /// Install a docker-compose application using a given jinja2 template
     #[clap(alias = "i", alias = "add")]
     Install(Install),
-    /// Upgrades an existing composer application, this is equivalent to doing docker-compose up again, so existing services will remain and only deltas will be applied.
+    /// Upgrades an existing composer application, this is equivalent to doing docker compose up again, so existing services will remain and only deltas will be applied.
     #[clap(alias = "u", alias = "update")]
     Upgrade(Upgrade),
     /// List installed composer applications
