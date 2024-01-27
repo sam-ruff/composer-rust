@@ -135,7 +135,9 @@ pub fn add_application(
         timestamp: get_current_timestamp(),
         state: ApplicationState::STARTING,
         app_name: app_yaml.name,
-        compose_path: directory.to_string_lossy().to_string(),
+        compose_path: fs::canonicalize(&directory)
+            .unwrap_or_else(|_| directory.clone())
+            .to_string_lossy().to_string(),
     };
     // Change status of app to starting
     append_to_storage(&application)?;
