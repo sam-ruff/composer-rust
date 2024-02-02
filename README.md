@@ -56,6 +56,9 @@ curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
 ```
 Then get the composer source:
 ```bash
+# Ensure build essentials are installed
+sudo apt install build-essential -y
+# Set cargo env
 source "$HOME/.cargo/env"
 git clone https://github.com/ByteSquid/composer-rust.git
 cd composer-rust
@@ -63,8 +66,6 @@ cargo build --release
 ```
 Copy the binary to a location in your PATH, e.g. `$HOME/.local/bin`:
 ```bash
-# Ensure build essentials are installed
-sudo apt install build-essential -y
 mkdir -p $HOME/.local/bin
 cp target/release/composer $HOME/.local/bin
 # If you dont have /usr/local/bin on your path
