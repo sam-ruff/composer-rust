@@ -63,7 +63,9 @@ cargo build --release
 ```
 Copy the binary to a location in your PATH, e.g. `$HOME/.local/bin`:
 ```bash
-mkdir -p 
+# Ensure build essentials are installed
+sudo apt install build-essential -y
+mkdir -p $HOME/.local/bin
 cp target/release/composer $HOME/.local/bin
 # If you dont have /usr/local/bin on your path
 echo 'export PATH="$HOME/.local/bin:$PATH"' >> ~/.bashrc
