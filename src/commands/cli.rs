@@ -15,6 +15,9 @@ pub struct Cli {
     /// If included as a flag, before installing/upgrading an application, all images will attempt to be pulled that are specified in the template.jinja
     #[clap(short, long)]
     pub always_pull: bool,
+    /// If included, docker compose up command is omitted
+    #[clap(short, long)]
+    pub no_run: bool,
     #[clap(subcommand)]
     cmd: Cmd,
 }

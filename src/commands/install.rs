@@ -137,7 +137,8 @@ pub fn add_application(
         app_name: app_yaml.name,
         compose_path: fs::canonicalize(&directory)
             .unwrap_or_else(|_| directory.clone())
-            .to_string_lossy().to_string(),
+            .to_string_lossy()
+            .to_string(),
     };
     // Change status of app to starting
     append_to_storage(&application)?;
@@ -156,6 +157,8 @@ pub fn add_application(
         write(file_path, rendered_content.as_bytes())?;
     }
 
+    let no_run = app::no_run();
+
     // Find all docker-compose.jinja2 files
     let all_compose_files = get_files_with_name(
         composer_id_directory.to_str().unwrap(),
@@ -168,11 +171,15 @@ pub fn add_application(
             let dir_str = compose_path.to_str().unwrap();
             compose_pull(dir_str);
         }
-        compose_up(&compose_file, install_id)?;
+        if !no_run {
+            compose_up(&compose_file, install_id)?;
+        }
     }
 
     // Change status of app to running
-    application.state = ApplicationState::RUNNING;
+    if !no_run {
+        application.state = ApplicationState::RUNNING;
+    }
     append_to_storage(&application)?;
     Ok(())
 }
