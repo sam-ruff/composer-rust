@@ -80,8 +80,8 @@ mod tests {
         let target_dir =
             RelativePath::new("resources/test/templates").to_logical_path(&current_dir);
         let expected = vec![
-            "resources/test/templates/world.jinja2",
             "resources/test/templates/nested-default.jinja2",
+            "resources/test/templates/world.jinja2",
         ];
         let target_dir_str = target_dir.to_str().unwrap();
         let actual = get_files_with_extension(target_dir_str, "jinja2");
