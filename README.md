@@ -157,3 +157,4 @@ services:
 In this example a templated config file is mounted in as `.json` so that its picked up correctly post-templating. This can be very powerful when switching between environments.
 ## Contributing
 Contributions are welcome! Please submit a pull request or create an issue to discuss any changes.
+
