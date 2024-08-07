@@ -113,7 +113,7 @@ jobs:
 
       - name: Set target for mac
         shell: bash
-        if: endsWith(matrix.target, 'apple-darwin'')
+        if: endsWith(matrix.target, 'apple-darwin')
         run: |
           rustup target add x86_64-apple-darwin
 
