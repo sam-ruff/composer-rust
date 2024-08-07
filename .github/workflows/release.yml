@@ -110,7 +110,12 @@ jobs:
         shell: bash
         run: |
           sed -i.bak -e 's/^version = "0\.0\.0"/version = "${{ env.RELEASE_VERSION }}"/' Cargo.toml && rm -f Cargo.toml.bak
-      
+
+      - name: Set target for mac
+        shell: bash
+        if: endsWith(matrix.target, 'apple-darwin'')
+        run: |
+          rustup target add x86_64-apple-darwin
 
       - name: Build release binary
         shell: bash
