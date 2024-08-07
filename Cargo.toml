@@ -42,6 +42,7 @@ serial_test = "1.0.0"
 log4rs = "1.0"
 chrono = "0.4"
 chrono-humanize = "0.2.2"
+time = "0.3.36"
 
 [dev-dependencies]
 assert_matches = "1.5.0"
