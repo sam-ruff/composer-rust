@@ -4,13 +4,24 @@ use std::fs::File;
 use std::io::Read;
 use std::path::Path;
 
+/// Renders a Jinja2 template with the provided YAML values and additional global variables.
+///
+/// # Arguments
+///
+/// * `path` - The file path to the Jinja2 template.
+/// * `values_yaml` - A `serde_yaml::Value` containing the variables to inject into the template.
+///
+/// # Returns
+///
+/// * `Ok(String)` containing the rendered template if successful.
+/// * `Err(anyhow::Error)` if an error occurs during rendering.
 pub fn render_template(path: &str, values_yaml: Value) -> anyhow::Result<String> {
     // Load the template file into a string
     let mut template_file = File::open(path)?;
     let mut template_string = String::new();
     template_file.read_to_string(&mut template_string)?;
 
-    // Create a Jinja environment and parse the template string
+    // Create a Jinja environment
     let mut env = Environment::new();
 
     // Get the directory of the template file
@@ -19,53 +30,22 @@ pub fn render_template(path: &str, values_yaml: Value) -> anyhow::Result<String>
         .unwrap_or_else(|| Path::new("."))
         .to_path_buf();
 
-    // Add 'composer.cwd' to the globals
-    let mut values_with_globals = values_yaml.clone();
+    // Retrieve global variables to add
+    let global_vars = get_global_variables(&template_dir)?;
 
-    // Retrieve the current working directory as a string
-    let cwd = template_dir
-        .to_str()
-        .ok_or_else(|| anyhow::anyhow!("Failed to convert current directory to string"))?
-        .to_owned();
+    // Remove 'composer' key from the input YAML values
+    let cleansed_values = remove_composer_key(values_yaml)?;
 
-    // Insert 'composer.cwd' into the YAML mapping
-    match &mut values_with_globals {
-        Value::Mapping(mapping) => {
-            // Get or create the 'composer' mapping
-            let composer_key = Value::String("composer".to_string());
-            let composer_value = mapping.entry(composer_key.clone())
-                .or_insert(Value::Mapping(serde_yaml::Mapping::new()));
-
-            match composer_value {
-                Value::Mapping(composer_mapping) => {
-                    composer_mapping.insert(
-                        Value::String("cwd".to_string()),
-                        Value::String(cwd),
-                    );
-                }
-                _ => {
-                    return Err(anyhow::anyhow!(
-                        "Expected 'composer' to be a mapping, but found {:?}",
-                        composer_value
-                    ));
-                }
-            }
-        }
-        _ => {
-            return Err(anyhow::anyhow!(
-                "Expected YAML mapping for template variables, but found {:?}",
-                values_with_globals
-            ));
-        }
-    }
+    // Merge the cleansed YAML values with the global variables
+    let merged_values = merge_yaml(cleansed_values, global_vars)?;
 
     // Add the template to the environment
     let template_key = "template";
     env.add_template(template_key, &template_string)?;
     let template = env.get_template(template_key)?;
 
-    // Convert the data to minijinja values
-    let ctx = minijinja::value::Value::from_serializable(&values_with_globals);
+    // Convert the merged data to minijinja values
+    let ctx = minijinja::value::Value::from_serializable(&merged_values);
 
     // Render the template with the input data
     let rendered = template.render(&ctx).map_err(|e| {
@@ -80,12 +60,99 @@ pub fn render_template(path: &str, values_yaml: Value) -> anyhow::Result<String>
     Ok(rendered)
 }
 
+/// Retrieves global variables to be injected into the template.
+///
+/// # Arguments
+///
+/// * `template_dir` - The directory of the template file.
+///
+/// # Returns
+///
+/// * `Ok(Value)` containing the global variables.
+/// * `Err(anyhow::Error)` if an error occurs while constructing global variables.
+fn get_global_variables(template_dir: &Path) -> anyhow::Result<Value> {
+    // Initialize an empty YAML mapping
+    let mut globals = serde_yaml::Mapping::new();
+
+    // Example: Add 'composer.cwd' as a global variable
+    let composer_key = Value::String("composer".to_string());
+    let cwd = template_dir
+        .to_str()
+        .ok_or_else(|| anyhow::anyhow!("Failed to convert template directory to string"))?
+        .to_owned();
+
+    let mut composer_mapping = serde_yaml::Mapping::new();
+    composer_mapping.insert(Value::String("cwd".to_string()), Value::String(cwd));
+    globals.insert(composer_key, Value::Mapping(composer_mapping));
+
+    // Add more global variables here if needed in the future
+
+    Ok(Value::Mapping(globals))
+}
+
+/// Removes the 'composer' key from the provided YAML `Value` if it exists.
+///
+/// # Arguments
+///
+/// * `values` - The original YAML `Value`.
+///
+/// # Returns
+///
+/// * `Ok(Value)` with the 'composer' key removed.
+/// * `Err(anyhow::Error)` if the YAML structure is invalid.
+fn remove_composer_key(values: Value) -> anyhow::Result<Value> {
+    match values {
+        Value::Mapping(mut mapping) => {
+            // Remove the 'composer' key if it exists
+            if let Some(pos) = mapping
+                .keys()
+                .position(|k| match k {
+                    Value::String(s) => s == "composer",
+                    _ => false,
+                })
+            {
+                // To remove by index, collect keys into a vector
+                let key_to_remove = mapping.keys().nth(pos).cloned().unwrap();
+                mapping.remove(&key_to_remove);
+            }
+            Ok(Value::Mapping(mapping))
+        }
+        _ => Ok(values), // If it's not a mapping, return as is
+    }
+}
+
+/// Merges two YAML `Value` objects, giving precedence to the second one.
+///
+/// # Arguments
+///
+/// * `base` - The base YAML `Value`.
+/// * `override_val` - The YAML `Value` to merge into the base.
+///
+/// # Returns
+///
+/// * `Ok(Value)` containing the merged YAML.
+/// * `Err(anyhow::Error)` if the YAML structures are incompatible.
+fn merge_yaml(base: Value, override_val: Value) -> anyhow::Result<Value> {
+    match (base, override_val) {
+        (Value::Mapping(mut base_map), Value::Mapping(override_map)) => {
+            for (k, v) in override_map {
+                base_map.insert(k, v);
+            }
+            Ok(Value::Mapping(base_map))
+        }
+        _ => Err(anyhow::anyhow!(
+            "Both base and override YAML values must be mappings."
+        )),
+    }
+}
+
 #[cfg(test)]
 mod tests {
-    use crate::utils::template::render_template;
+    use super::render_template;
     use relative_path::RelativePath;
     use serde_yaml::Value;
     use std::env::current_dir;
+    use std::path::PathBuf;
 
     #[test]
     fn test_render_basic_template() -> anyhow::Result<()> {
@@ -141,6 +208,15 @@ mod tests {
         Ok(())
     }
 
+    fn get_current_directory(template: PathBuf) -> anyhow::Result<String> {
+        Ok(template
+            .parent()
+            .ok_or_else(|| anyhow::anyhow!("Failed to get parent directory of the template"))?
+            .canonicalize()?
+            .to_str()
+            .ok_or_else(|| anyhow::anyhow!("Failed to convert expected cwd to string"))?
+            .to_owned())
+    }
 
     #[test]
     fn test_render_cwd() -> anyhow::Result<()> {
@@ -161,7 +237,10 @@ mod tests {
         );
 
         // Define minimal YAML input (can be empty as `composer.cwd` is automatically added)
-        let yaml = "{}";
+        let yaml = "
+        composer:
+            some_key: some_value
+        ";
         let value_file: Value = serde_yaml::from_str(yaml)?;
 
         // Render the template
@@ -173,13 +252,7 @@ mod tests {
         )?;
 
         // Determine the expected `composer.cwd` value (the directory containing the template)
-        let expected_cwd = template
-            .parent()
-            .ok_or_else(|| anyhow::anyhow!("Failed to get parent directory of the template"))?
-            .canonicalize()?
-            .to_str()
-            .ok_or_else(|| anyhow::anyhow!("Failed to convert expected cwd to string"))?
-            .to_owned();
+        let expected_cwd = get_current_directory(template)?;
 
         // The rendered output should be "hi <expected_cwd>"
         let expected_string = format!("hi {}", expected_cwd);
@@ -198,6 +271,64 @@ mod tests {
         Ok(())
     }
 
+    /// Test to ensure that the 'composer' key in the input YAML is overwritten by the global 'composer' variables.
+    #[test]
+    fn test_composer_key_overwritten() -> anyhow::Result<()> {
+        trace!("Running test_composer_key_overwritten.");
+        let current_dir = current_dir()?;
+        let template = RelativePath::new("resources/test/templates/composer-overwrite.jinja2")
+            .to_logical_path(&current_dir);
+
+        // Ensure the template file exists
+        assert!(
+            template.exists(),
+            "Template file does not exist at path: {}",
+            template.display()
+        );
+
+        // Define YAML input with 'composer' key that should be overwritten
+        let yaml = "
+        composer:
+            cwd: '/path/from/input'
+            other_key: 'should_be_removed_or_ignored'
+        ";
+        let value_file: Value = serde_yaml::from_str(yaml)?;
+
+        // Render the template
+        let output_string = render_template(
+            template.to_str().ok_or_else(|| {
+                anyhow::anyhow!("Failed to convert template path to string")
+            })?,
+            value_file,
+        )?;
+
+        // Determine the expected 'composer.cwd' value (the directory containing the template)
+        let expected_cwd = get_current_directory(template)?;
+
+        // The rendered output should show the global 'composer.cwd', not the one from input
+        // The composer.other_key should use the default of 'removed' in the template
+        let expected_string = format!("composer cwd: {} and removed", expected_cwd);
+        let rendered_output = output_string.trim(); // Trim to remove any accidental whitespace
+
+        // Assert that the rendered output matches the expected string
+        assert_eq!(
+            expected_string, rendered_output,
+            "Rendered output '{}' does not match expected '{}'",
+            rendered_output, expected_string
+        );
+
+        // Additionally, ensure that other keys under 'composer' are not present
+        // For example, 'other_key' should not appear in the rendered output
+        assert!(
+            !rendered_output.contains("other_key"),
+            "Rendered output should not contain keys from input 'composer', but found."
+        );
+
+        // Log the successful test completion
+        trace!("test_composer_key_overwritten completed successfully.");
+
+        Ok(())
+    }
 
 
 }
