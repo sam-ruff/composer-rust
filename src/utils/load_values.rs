@@ -312,12 +312,6 @@ mod tests {
     }
 
     #[derive(Debug, Serialize, Deserialize)]
-    struct ExpectedYamlSimple {
-        world: String,
-        foo: HashMap<String, String>,
-    }
-
-    #[derive(Debug, Serialize, Deserialize)]
     struct ExpectedYamlOverride {
         world: String,
     }

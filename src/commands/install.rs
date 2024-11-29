@@ -139,6 +139,7 @@ pub fn add_application(
             .unwrap_or_else(|_| directory.clone())
             .to_string_lossy()
             .to_string(),
+        value_files: values_files.clone(),
     };
     // Change status of app to starting
     append_to_storage(&application)?;
@@ -190,14 +191,12 @@ mod tests {
 
     use crate::commands::install::{verify_file_exists, Install};
 
-    use crate::utils::copy_file_utils::get_composer_directory;
     use crate::utils::storage::models::ApplicationState;
-    use crate::utils::storage::read_from::{get_application_by_id, if_application_exists};
-    use crate::utils::storage::write_to_storage::delete_application_by_id;
+    use crate::utils::storage::read_from::get_application_by_id;
     use serial_test::serial;
     use std::env::current_dir;
-    use std::fs;
     use std::path::PathBuf;
+    use crate::utils::test_utils::clean_up_test_folder;
 
     #[test]
     #[serial]
@@ -313,22 +312,6 @@ mod tests {
         Ok(())
     }
 
-    fn clean_up_test_folder(id: &str) -> anyhow::Result<()> {
-        // Clean up folder for test
-        let composer_directory = get_composer_directory()?;
-        let composer_id_directory: PathBuf = composer_directory.join(id);
-        // Remove the composer directory if it exists
-        if composer_id_directory.exists() {
-            fs::remove_dir_all(composer_id_directory)?;
-        }
-        // Remove the persisted application from config.json if it exists
-        if if_application_exists(id) {
-            // This might fail but we tried
-            let _ = delete_application_by_id(id);
-        }
-        Ok(())
-    }
-
     #[test]
     #[serial]
     fn test_install_with_correct_values_from_app_yaml() -> anyhow::Result<()> {
@@ -359,6 +342,7 @@ mod tests {
     }
 
     #[test]
+    #[serial]
     fn test_verify_file_exists_happy_path() {
         let install = Install {
             directory: PathBuf::from("resources/test/simple/"),
@@ -370,6 +354,7 @@ mod tests {
     }
 
     #[test]
+    #[serial]
     fn test_verify_file_exists_not_happy_path() {
         let install = Install {
             directory: PathBuf::from("resources/test/simple/"),
@@ -383,5 +368,30 @@ mod tests {
             result.unwrap_err().to_string(),
             "Could not find non_existent_file.txt at resources/test/simple/non_existent_file.txt"
         );
+    }
+
+    #[test]
+    #[serial]
+    fn test_install_stores_value_files() -> anyhow::Result<()> {
+        let current_dir = current_dir()?;
+        let install_dir = RelativePath::new("resources/test/simple/")
+            .to_logical_path(&current_dir);
+        let values_dir = RelativePath::new("resources/test/test_values/values.yaml")
+            .to_logical_path(&current_dir);
+        let values_str = values_dir.to_string_lossy().to_string();
+        let id = "test_install_stores_value_files";
+        let value_files = vec![values_str.clone()];
+        let test_install_cmd = Install {
+            directory: install_dir.clone(),
+            id: Some(id.to_string()),
+            value_files: value_files.clone(),
+        };
+        test_install_cmd.exec()?;
+        // Read the created app
+        let app = get_application_by_id(id)?;
+        // Clean up the app after test
+        clean_up_test_folder(id)?;
+        assert_eq!(app.value_files, value_files);
+        Ok(())
     }
 }

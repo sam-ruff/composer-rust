@@ -112,6 +112,7 @@ mod tests {
             state: ApplicationState::STARTING,
             app_name: id.to_string(),
             compose_path: id.to_string(),
+            value_files: vec!["123".to_string(), "abc".to_string()],
         };
         // Append the app to storage
         append_to_storage(&app)?;
@@ -141,6 +142,7 @@ mod tests {
             state: ApplicationState::STARTING,
             app_name: id.to_string(),
             compose_path: id.to_string(),
+            value_files: vec![],
         };
         // Backup config.json
         let (composer_json_config, composer_json_config_backup) = backup_composer_config()?;
@@ -170,6 +172,7 @@ mod tests {
             state: ApplicationState::STARTING,
             app_name: id.to_string(),
             compose_path: id.to_string(),
+            value_files: vec![],
         };
         // Append the app to storage
         append_to_storage(&app)?;

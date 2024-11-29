@@ -178,6 +178,13 @@ services:
         target: /usr/share/nginx/html/config/config.json
 ```
 In this example a templated config file is mounted in as `.json` so that its picked up correctly post-templating. This can be very powerful when switching between environments.
+### Debugging issues
+For Vecs not showing up during debugging as per:
+The temporary workaround is:
+```bash
+rustup install nightly-2024-08-01
+rustup override set nightly-2024-08-01
+```
 ## Contributing
 Contributions are welcome! Please submit a pull request or create an issue to discuss any changes.
 
