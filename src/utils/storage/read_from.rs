@@ -77,6 +77,7 @@ mod tests {
             state: ApplicationState::STARTING,
             app_name: id.to_string(),
             compose_path: id.to_string(),
+            value_files: vec!["abc".to_string()],
         };
         let id2 = "test_get_all_from_storage_sunny_day_2";
         let app2 = PersistedApplication {
@@ -86,6 +87,7 @@ mod tests {
             state: ApplicationState::STARTING,
             app_name: id.to_string(),
             compose_path: id.to_string(),
+            value_files: vec![],
         };
         // Append both apps to storage
         append_to_storage(&app)?;
@@ -132,6 +134,7 @@ mod tests {
             state: ApplicationState::STARTING,
             app_name: id.to_string(),
             compose_path: id.to_string(),
+            value_files: vec!["abc".to_string(), "def".to_string()],
         };
         let id2 = "not_looked_for";
         let app2 = PersistedApplication {
@@ -141,6 +144,7 @@ mod tests {
             state: ApplicationState::STARTING,
             app_name: id.to_string(),
             compose_path: id.to_string(),
+            value_files: vec![],
         };
         // Append both apps to storage
         append_to_storage(&app)?;
@@ -168,6 +172,7 @@ mod tests {
             state: ApplicationState::STARTING,
             app_name: id.to_string(),
             compose_path: id.to_string(),
+            value_files: vec![],
         };
         // Append both apps to storage
         append_to_storage(&app)?;

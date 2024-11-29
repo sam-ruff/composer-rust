@@ -4,6 +4,8 @@ use std::fs;
 use std::fs::File;
 use std::io::Write;
 use std::path::PathBuf;
+use crate::utils::storage::read_from::if_application_exists;
+use crate::utils::storage::write_to_storage::delete_application_by_id;
 
 #[allow(dead_code)]
 pub fn move_file_if_exists(
@@ -41,4 +43,21 @@ pub fn backup_composer_config() -> anyhow::Result<(PathBuf, PathBuf)> {
     let composer_json_config_backup: PathBuf = composer_directory.join("backup-config.json");
     move_file_if_exists(&composer_json_config, &composer_json_config_backup)?;
     Ok((composer_json_config, composer_json_config_backup))
+}
+
+#[allow(dead_code)]
+pub fn clean_up_test_folder(id: &str) -> anyhow::Result<()> {
+    // Clean up folder for test
+    let composer_directory = get_composer_directory()?;
+    let composer_id_directory: PathBuf = composer_directory.join(id);
+    // Remove the composer directory if it exists
+    if composer_id_directory.exists() {
+        fs::remove_dir_all(composer_id_directory)?;
+    }
+    // Remove the persisted application from config.json if it exists
+    if if_application_exists(id) {
+        // This might fail but we tried
+        let _ = delete_application_by_id(id);
+    }
+    Ok(())
 }

@@ -148,6 +148,10 @@ To upgrade the example application, modify the values.yaml or override.yaml file
 ```bash
 composer upgrade -i example -v resources/example_app/values.yaml -v resources/example_app/override.yaml resources/example_app
 ```
+You can also do the following if you want to reuse the same values files (i.e. you don't have to specify them again unless you want to overwrite them):
+```bash
+composer upgrade -i example resources/example_app
+```
 You can then grab the logs of the container to see the overriden variable:
 ```bash
 > docker logs example_container
@@ -178,6 +182,13 @@ services:
         target: /usr/share/nginx/html/config/config.json
 ```
 In this example a templated config file is mounted in as `.json` so that its picked up correctly post-templating. This can be very powerful when switching between environments.
+### Debugging issues
+For Vecs not showing up during debugging as per:
+The temporary workaround is:
+```bash
+rustup install nightly-2024-08-01
+rustup override set nightly-2024-08-01
+```
 ## Contributing
 Contributions are welcome! Please submit a pull request or create an issue to discuss any changes.
 

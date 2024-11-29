@@ -8,6 +8,8 @@ pub struct PersistedApplication {
     pub state: ApplicationState,
     pub app_name: String,
     pub compose_path: String,
+    #[serde(default)]
+    pub value_files: Vec<String>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone, PartialEq)]

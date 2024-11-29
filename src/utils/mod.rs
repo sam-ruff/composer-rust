@@ -3,6 +3,6 @@ pub mod docker_compose;
 pub mod load_values;
 pub mod storage;
 pub mod template;
-mod test_utils;
+pub mod test_utils;
 pub(crate) mod walk;
 mod yaml_string_parser;
