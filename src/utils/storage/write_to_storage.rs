@@ -34,7 +34,7 @@ pub fn append_to_storage(application: &PersistedApplication) -> anyhow::Result<(
         Vec::new()
     } else {
         serde_json::from_str(&contents).with_context(|| {
-            format!("Could not parse ~/.composer/config.json. Is it valid json?")
+            "Could not parse ~/.composer/config.json. Is it valid json?".to_string()
         })?
     };
 
