@@ -20,11 +20,11 @@ Composer is a command line tool similar to Helm, but designed for Docker Compose
 ## Getting Started
 To install Composer, run the following command for Ubuntu/Rocky:
 ```bash
-curl -fsSL https://raw.githubusercontent.com/ByteSquid/composer-rust/master/scripts/install-ubuntu.sh | bash
+curl -fsSL https://raw.githubusercontent.com/sam-bytesquid/composer-rust/master/scripts/install-ubuntu.sh | bash
 ```
 For AWS Linux 2 or anything linux-based not using glibc:
 ```bash
-curl -fsSL https://raw.githubusercontent.com/ByteSquid/composer-rust/master/scripts/install-musl.sh | bash
+curl -fsSL https://raw.githubusercontent.com/sam-bytesquid/composer-rust/master/scripts/install-musl.sh | bash
 ```
 For other platforms, clone the repository and build the binary.
 ## Binaries
@@ -60,7 +60,7 @@ Then get the composer source:
 sudo apt install build-essential -y
 # Set cargo env
 source "$HOME/.cargo/env"
-git clone https://github.com/ByteSquid/composer-rust.git
+git clone https://github.com/sam-bytesquid/composer-rust.git
 cd composer-rust
 cargo build --release
 ```
