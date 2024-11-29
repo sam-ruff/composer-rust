@@ -74,19 +74,17 @@ fn get_global_variables(template_dir: &Path) -> anyhow::Result<Value> {
     // Initialize an empty YAML mapping
     let mut globals = serde_yaml::Mapping::new();
 
-    // Example: Add 'composer.cwd' as a global variable
+    // All global variables should have composer key
     let composer_key = Value::String("composer".to_string());
     let cwd = template_dir
         .to_str()
         .ok_or_else(|| anyhow::anyhow!("Failed to convert template directory to string"))?
         .to_owned();
-
+    // Add cwd for current working directory
     let mut composer_mapping = serde_yaml::Mapping::new();
     composer_mapping.insert(Value::String("cwd".to_string()), Value::String(cwd));
     globals.insert(composer_key, Value::Mapping(composer_mapping));
-
     // Add more global variables here if needed in the future
-
     Ok(Value::Mapping(globals))
 }
 
