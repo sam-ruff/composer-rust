@@ -93,6 +93,29 @@ composer [global flags] command [flags] [arguments]
 * `template, t`: Print the output docker-compose.yaml after values have been applied. This can be used to produce a Compose file for use outside of the Composer install environment or for debugging purposes.
 * `delete, d, uninstall`: Delete a given application(s) (by ID unless using --all), removing it completely.
 
+## Globals
+Composer provides a set of global variables that are automatically injected into your Jinja2 templates. 
+These globals can be used to access environment-specific information without needing to pass them explicitly through 
+your YAML values. All globals start with the `composer` key, any user submitted value to `composer` key will be ignored.
+### Current Globals
+```
+composer.cwd:
+    The current working directory of the Composer process, typically the directory containing your template files. 
+    This can be useful for resolving relative paths or for logging purposes within your templates.
+```
+
+Example Usage in a Template:
+```yaml
+version: "3.9"
+services:
+    app:
+        image: myapp:latest
+        working_dir: {{ composer.cwd }}
+        volumes:
+          - {{ composer.cwd }}/app:/usr/src/app
+```
+
+Note: Future versions of Composer may introduce additional global variables. Keep an eye on the release notes for updates.
 
 ## Configuration
 Composer relies on several configuration files for templating and application settings:
