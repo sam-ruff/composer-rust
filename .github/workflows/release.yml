@@ -205,7 +205,7 @@ jobs:
           path: /home/runner/rpmbuild/RPMS/**/*.rpm
 
       - name: Download workflow artifact
-        uses: actions/download-artifact@v2
+        uses: actions/download-artifact@v4
         with:
           name: composer_rpm
 
