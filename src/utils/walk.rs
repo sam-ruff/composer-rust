@@ -80,6 +80,7 @@ mod tests {
         let target_dir =
             RelativePath::new("resources/test/templates").to_logical_path(&current_dir);
         let expected = vec![
+            "resources/test/templates/cwd_template.jinja2",
             "resources/test/templates/nested-default.jinja2",
             "resources/test/templates/world.jinja2",
         ];
