@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # Define the GitHub API URL
-API_URL="https://api.github.com/repos/bytesquid/composer-rust/releases/latest"
+API_URL="https://api.github.com/repos/sam-bytesquid/composer-rust/releases/latest"
 
 # Ensure jq is installed for JSON parsing
 if ! command -v jq &> /dev/null; then
