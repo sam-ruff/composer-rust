@@ -14,14 +14,14 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       - name: Install Node.js
-        uses: actions/setup-node@v3
+        uses: actions/setup-node@v4
         with:
           node-version: 18
 
-      - uses: pnpm/action-setup@v2
+      - uses: pnpm/action-setup@v4
         name: Install pnpm
         id: pnpm-install
         with:
@@ -73,7 +73,7 @@ jobs:
 
     steps:
       - name: Check out repository
-        uses: actions/checkout@v2
+        uses: actions/checkout@v4
 
       - name: Set up Rust
         uses: actions-rs/toolchain@v1
@@ -98,7 +98,7 @@ jobs:
 
 
       - name: Download Version File
-        uses: actions/download-artifact@v3
+        uses: actions/download-artifact@v4
         with:
           name: version
 
@@ -154,7 +154,7 @@ jobs:
     runs-on: ubuntu-latest
     if: ((github.ref == 'refs/heads/master')) && (!contains(github.event.head_commit.message, 'chore:'))
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v4
 
       - name: Set up RPM build environment
         run: |
@@ -169,7 +169,7 @@ jobs:
           override: true
 
       - name: Download Version File
-        uses: actions/download-artifact@v3
+        uses: actions/download-artifact@v4
         with:
           name: version
 
@@ -199,7 +199,7 @@ jobs:
         run: rpmbuild -ba $HOME/rpmbuild/SPECS/composer.spec
 
       - name: Upload RPM artifact
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: composer_rpm
           path: /home/runner/rpmbuild/RPMS/**/*.rpm
