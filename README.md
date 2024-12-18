@@ -3,7 +3,7 @@
 Composer is a command line tool similar to Helm, but designed for Docker Compose. It enables templating for Docker Compose files, making it easy to manage and deploy applications with different configurations.
 
 ## Status
-[![Release](https://github.com/sam-bytesquid/composer-rust/actions/workflows/release.yml/badge.svg)](https://github.com/sam-bytesquid/composer-rust/actions/workflows/release.yml)
+[![Release](https://github.com/sam-ruff/composer-rust/actions/workflows/release.yml/badge.svg)](https://github.com/sam-ruff/composer-rust/actions/workflows/release.yml)
 <br/>
 ## Features
 - Install, upgrade, and delete applications using Jinja2 templates
@@ -20,17 +20,17 @@ Composer is a command line tool similar to Helm, but designed for Docker Compose
 ## Getting Started
 To install Composer, run the following command for Ubuntu/Rocky:
 ```bash
-curl -fsSL https://raw.githubusercontent.com/sam-bytesquid/composer-rust/master/scripts/install-ubuntu.sh | bash
+curl -fsSL https://raw.githubusercontent.com/sam-ruff/composer-rust/master/scripts/install-ubuntu.sh | bash
 ```
 For AWS Linux 2 or anything linux-based not using glibc:
 ```bash
-curl -fsSL https://raw.githubusercontent.com/sam-bytesquid/composer-rust/master/scripts/install-musl.sh | bash
+curl -fsSL https://raw.githubusercontent.com/sam-ruff/composer-rust/master/scripts/install-musl.sh | bash
 ```
 For other platforms, clone the repository and build the binary.
 ## Binaries
 The latest releases for OSX, Linux and Windows can be found here.
 ```
-https://github.com/sam-bytesquid/composer-rust/releases
+https://github.com/sam-ruff/composer-rust/releases
 ```
 
 ## RPM Installation
@@ -60,7 +60,7 @@ Then get the composer source:
 sudo apt install build-essential -y
 # Set cargo env
 source "$HOME/.cargo/env"
-git clone https://github.com/sam-bytesquid/composer-rust.git
+git clone https://github.com/sam-ruff/composer-rust.git
 cd composer-rust
 cargo build --release
 ```

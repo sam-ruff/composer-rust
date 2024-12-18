@@ -186,7 +186,7 @@ jobs:
           export APP_VERSION="${{ env.RELEASE_VERSION }}"
           export APP_SUMMARY="A docker-compose package manager."
           export APP_LICENSE="MIT"
-          export APP_URL="https://github.com/sam-bytesquid/composer-rust"
+          export APP_URL="https://github.com/sam-ruff/composer-rust"
           export APP_SOURCE_URL="target/release/composer"
           export APP_DESCRIPTION="A docker-compose package manager."
           export APP_AUTHOR="Sam Ruff"
