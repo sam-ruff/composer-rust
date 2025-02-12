@@ -18,11 +18,7 @@ Composer is a command line tool similar to Helm, but designed for Docker Compose
 - jq for installation script
 
 ## Getting Started
-To install Composer, run the following command for Ubuntu/Rocky:
-```bash
-curl -fsSL https://raw.githubusercontent.com/sam-ruff/composer-rust/master/scripts/install-ubuntu.sh | bash
-```
-For AWS Linux 2 or anything linux-based not using glibc:
+To install Composer, run the following command for Linux:
 ```bash
 curl -fsSL https://raw.githubusercontent.com/sam-ruff/composer-rust/master/scripts/install-musl.sh | bash
 ```
