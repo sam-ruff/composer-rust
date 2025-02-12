@@ -19,7 +19,7 @@ jobs:
       - name: Install Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: 18
+          node-version: 21
 
       - uses: pnpm/action-setup@v4
         name: Install pnpm
@@ -32,7 +32,7 @@ jobs:
           pnpm --package=@semantic-release/commit-analyzer \
           --package=@semantic-release/git \
           --package=@semantic-release/exec \
-          --package=semantic-release@19 \
+          --package=semantic-release@24.1.0 \
           dlx semantic-release
 
       - name: Create GitHub Release
