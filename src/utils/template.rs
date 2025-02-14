@@ -1,8 +1,23 @@
-use minijinja::Environment;
+use minijinja::{Environment, ErrorKind};
 use serde_yaml::Value;
 use std::fs::File;
 use std::io::Read;
 use std::path::Path;
+
+/// A custom filter for required
+/// Hello {{ world_variable | required }}
+/// an error will be thrown in the example above is world_variable is empty
+fn required(value: String) -> Result<String, minijinja::Error> {
+    if value.is_empty() {
+        return Err(
+            minijinja::Error::new(
+                ErrorKind::InvalidOperation, 
+                "Failed to render template. Value marked as 'required' must be present. Check your values file to ensure it exists.")
+        )
+    } 
+    Ok(value)
+}
+
 
 /// Renders a Jinja2 template with the provided YAML values and additional global variables.
 ///
@@ -38,7 +53,8 @@ pub fn render_template(path: &str, values_yaml: Value) -> anyhow::Result<String>
 
     // Merge the cleansed YAML values with the global variables
     let merged_values = merge_yaml(cleansed_values, global_vars)?;
-
+    // Add the custom `required` function
+    env.add_filter("required", required);
     // Add the template to the environment
     let template_key = "template";
     env.add_template(template_key, &template_string)?;
@@ -167,6 +183,33 @@ mod tests {
         assert_eq!(expected_string, output_string);
         Ok(())
     }
+
+    #[test]
+    fn test_render_template_required_error() -> anyhow::Result<()> {
+        // Get the current directory.
+        let current_dir = current_dir()?;
+        // Construct the full template path.
+        let template = RelativePath::new("resources/test/templates/required.jinja2")
+            .to_logical_path(&current_dir);
+        // Provide YAML with an empty value for the required variable.
+        let yaml = r#"
+        not_given: ""
+        "#;
+        let value_file: Value = serde_yaml::from_str(yaml)?;
+        // Attempt to render the template.
+        let result = render_template(template.to_str().unwrap(), value_file);
+        // Assert that rendering fails.
+        assert!(result.is_err(), "Template rendering should have failed for an empty required value.");
+        // Check that the error message contains the expected text.
+        let error_message = result.unwrap_err().to_string();
+        assert!(
+            error_message.contains("Failed to render template. Value marked as 'required' must be present"),
+            "Error message did not match expected output. Got: {}",
+            error_message
+        );
+        Ok(())
+    }
+
 
     #[test]
     fn test_render_nested_template_with_default() -> anyhow::Result<()> {

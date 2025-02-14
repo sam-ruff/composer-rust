@@ -178,6 +178,18 @@ services:
         target: /usr/share/nginx/html/config/config.json
 ```
 In this example a templated config file is mounted in as `.json` so that its picked up correctly post-templating. This can be very powerful when switching between environments.
+### Syntax Reference
+For a reference for syntax for the template files see here:
+[Minijinja docs](https://docs.rs/minijinja/latest/minijinja/index.html) <br/>
+We also support the following additional custom functions/filters: <br/>
+###### required
+```jinja2
+Hello {{ world_variable | required }}
+```
+If the value `world_variable` is not included in the values file when templating, the following error will be produced:
+```
+Failed to render template. Value `world_variable` must be present. Check your values file to ensure it exists.
+```
 ### Debugging issues
 For Vecs not showing up during debugging as per:
 The temporary workaround is:
