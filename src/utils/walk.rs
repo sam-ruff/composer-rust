@@ -73,6 +73,7 @@ mod tests {
     use std::env::current_dir;
     use std::path::{Path, PathBuf};
 
+    
     #[test]
     fn test_basic_walk() -> anyhow::Result<()> {
         trace!("Running test_basic_walk.");
