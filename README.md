@@ -188,7 +188,7 @@ Hello {{ world_variable | required }}
 ```
 If the value `world_variable` is not included in the values file when templating, the following error will be produced:
 ```
-Failed to render template. Value `world_variable` must be present. Check your values file to ensure it exists.
+Failed to render template. Value marked as 'required' must be present
 ```
 ### Debugging issues
 For Vecs not showing up during debugging as per:
