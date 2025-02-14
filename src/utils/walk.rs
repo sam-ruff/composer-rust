@@ -78,19 +78,23 @@ mod tests {
         trace!("Running test_basic_walk.");
         let current_dir = current_dir()?;
         let target_dir =
-            RelativePath::new("resources/test/templates").to_logical_path(&current_dir);
+            RelativePath::new("resources/test/walk_test").to_logical_path(&current_dir);
         let expected = vec![
-            "resources/test/templates/composer-overwrite.jinja2",
-            "resources/test/templates/cwd_template.jinja2",
-            "resources/test/templates/nested-default.jinja2",
-            "resources/test/templates/world.jinja2",
+            "resources/test/walk_test/file1.jinja2",
+            "resources/test/walk_test/file2.jinja2",
+            "resources/test/walk_test/subfolder/file3.jinja2",
         ];
         let target_dir_str = target_dir.to_str().unwrap();
         let actual = get_files_with_extension(target_dir_str, "jinja2");
         // We need to remove the base path for our tests so they are generic
         let actual_relative = get_relative_files(actual, &current_dir);
+        // Sort both vectors so order doesn't matter.
+        let mut expected_sorted = expected.clone();
+        expected_sorted.sort();
+        let mut actual_sorted = actual_relative.clone();
+        actual_sorted.sort();
         // Assert that they are equal
-        assert_eq!(expected, actual_relative);
+        assert_eq!(expected_sorted, actual_sorted);
         Ok(())
     }
 
