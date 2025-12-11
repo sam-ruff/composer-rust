@@ -86,7 +86,10 @@ composer [global flags] command [flags] [arguments]
 * `install, i, add`: Install a Docker Compose application using a given Jinja2 template.
 * `upgrade, u, update`: Upgrade an existing Composer application. This is equivalent to running docker-compose up again. Existing services will remain, and only the differences will be applied.
 * `list, ls, ps`: List installed Composer applications.
-* `template, t`: Print the output docker-compose.yaml after values have been applied. This can be used to produce a Compose file for use outside of the Composer install environment or for debugging purposes.
+* `template, t`: Print the output docker-compose.yaml after values have been applied. This can be used to produce a Compose file for use outside of the Composer install environment or for debugging purposes. Use `-o` to write to a file:
+  ```bash
+  composer template -t docker-compose.jinja2 -v values.yaml -o docker-compose.yaml
+  ```
 * `delete, d, uninstall`: Delete a given application(s) (by ID unless using --all), removing it completely.
 
 ## Globals
@@ -178,6 +181,22 @@ services:
         target: /usr/share/nginx/html/config/config.json
 ```
 In this example a templated config file is mounted in as `.json` so that its picked up correctly post-templating. This can be very powerful when switching between environments.
+
+## Value References
+Values files support referencing other values using Jinja2 syntax. References are resolved after all values files are merged.
+
+```yaml
+# values.yaml
+host: "localhost"
+port: 8080
+url: "http://{{ host }}:{{ port }}"
+config:
+  endpoint: "{{ url }}/api"
+  upper_host: "{{ host | upper }}"
+```
+
+After resolution, `url` becomes `http://localhost:8080` and `config.endpoint` becomes `http://localhost:8080/api`.
+
 ### Syntax Reference
 For a reference for syntax for the template files see here:
 [Minijinja docs](https://docs.rs/minijinja/latest/minijinja/index.html) <br/>
