@@ -1,4 +1,6 @@
 use crate::utils::copy_file_utils::get_composer_directory;
+use crate::utils::docker_compose::compose_down;
+use crate::utils::walk::get_files_with_names;
 use anyhow::anyhow;
 use std::fs;
 use std::fs::File;
@@ -47,16 +49,23 @@ pub fn backup_composer_config() -> anyhow::Result<(PathBuf, PathBuf)> {
 
 #[allow(dead_code)]
 pub fn clean_up_test_folder(id: &str) -> anyhow::Result<()> {
-    // Clean up folder for test
     let composer_directory = get_composer_directory()?;
     let composer_id_directory: PathBuf = composer_directory.join(id);
-    // Remove the composer directory if it exists
+
+    // Stop Docker containers/networks BEFORE removing files
     if composer_id_directory.exists() {
+        let compose_files = get_files_with_names(
+            composer_id_directory.to_str().unwrap(),
+            &["docker-compose.jinja2", "docker-compose.j2"],
+        );
+        for compose_file in compose_files {
+            compose_down(&compose_file, id);
+        }
         fs::remove_dir_all(composer_id_directory)?;
     }
+
     // Remove the persisted application from config.json if it exists
     if if_application_exists(id) {
-        // This might fail but we tried
         let _ = delete_application_by_id(id);
     }
     Ok(())

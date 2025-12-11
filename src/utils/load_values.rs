@@ -1,5 +1,6 @@
 use serde_yaml::{Mapping, Value};
 
+use crate::utils::value_resolver::resolve_value_references;
 use crate::utils::yaml_string_parser::parse_yaml_string;
 use anyhow::Context;
 use serde_yaml::mapping::Entry;
@@ -110,7 +111,12 @@ pub fn load_yaml_files(yaml_files: &Vec<&str>) -> anyhow::Result<Value> {
         }
     }
 
-    Ok(Value::Mapping(yaml_values))
+    // Resolve value references after all files are merged
+    let merged_values = Value::Mapping(yaml_values);
+    let resolved_values = resolve_value_references(merged_values)
+        .with_context(|| "Failed to resolve value references in YAML files")?;
+
+    Ok(resolved_values)
 }
 
 pub fn get_value_files_as_refs(strings: &Vec<String>) -> Vec<&str> {
@@ -422,6 +428,111 @@ mod tests {
 
         // Test that the merged YAML content matches the expected result
         assert_eq!(expected, merged_yaml);
+
+        Ok(())
+    }
+
+    #[test]
+    fn test_value_reference_resolution() -> anyhow::Result<()> {
+        trace!("Running test_value_reference_resolution.");
+        let current_dir = current_dir()?;
+        let values_path = RelativePath::new("resources/test/test_values/value_refs.yaml")
+            .to_logical_path(&current_dir);
+        let files = vec![values_path.to_str().unwrap()];
+        let output = load_yaml_files(&files)?;
+
+        // Check that message is resolved correctly
+        assert_eq!(
+            output.get("message").unwrap(),
+            &Value::String("hello world".to_string())
+        );
+
+        // Check nested resolved value
+        let config = output.get("config").unwrap();
+        assert_eq!(
+            config.get("greeting").unwrap(),
+            &Value::String("hello world".to_string())
+        );
+
+        // Check filter application
+        assert_eq!(
+            config.get("upper_greeting").unwrap(),
+            &Value::String("HELLO WORLD".to_string())
+        );
+
+        Ok(())
+    }
+
+    #[test]
+    fn test_value_reference_across_files() -> anyhow::Result<()> {
+        trace!("Running test_value_reference_across_files.");
+        let current_dir = current_dir()?;
+        let values_path = RelativePath::new("resources/test/test_values/values.yaml")
+            .to_logical_path(&current_dir);
+        // Load base values and then add a manual override with a reference
+        let files = vec![
+            values_path.to_str().unwrap(),
+            "greeting={{ world }}",
+        ];
+        let output = load_yaml_files(&files)?;
+
+        // The greeting should resolve to the value of world from values.yaml
+        assert_eq!(
+            output.get("greeting").unwrap(),
+            &Value::String("string".to_string())
+        );
+
+        Ok(())
+    }
+
+    #[test]
+    fn test_circular_reference_error() -> anyhow::Result<()> {
+        trace!("Running test_circular_reference_error.");
+        // Test with inline YAML containing circular references
+        let yaml_str = r#"
+a: "{{ b }}"
+b: "{{ c }}"
+c: "{{ a }}"
+"#;
+        // Write to a temporary file
+        let temp_dir = tempfile::tempdir()?;
+        let temp_file = temp_dir.path().join("circular.yaml");
+        std::fs::write(&temp_file, yaml_str)?;
+
+        let files = vec![temp_file.to_str().unwrap()];
+        let result = load_yaml_files(&files);
+
+        assert!(result.is_err());
+        let err_msg = result.unwrap_err().to_string();
+        assert!(
+            err_msg.contains("Circular dependency") || err_msg.contains("value references"),
+            "Error should mention circular dependency: {}",
+            err_msg
+        );
+
+        Ok(())
+    }
+
+    #[test]
+    fn test_no_value_references_passthrough() -> anyhow::Result<()> {
+        trace!("Running test_no_value_references_passthrough.");
+        let current_dir = current_dir()?;
+        let values_path = RelativePath::new("resources/test/test_values/values.yaml")
+            .to_logical_path(&current_dir);
+        let files = vec![values_path.to_str().unwrap()];
+
+        // Load should work without any issues when there are no value references
+        let output = load_yaml_files(&files)?;
+
+        // Verify the values are loaded correctly
+        assert_eq!(
+            output.get("hello").unwrap(),
+            &Value::Bool(true)
+        );
+        assert_eq!(
+            output.get("world").unwrap(),
+            &Value::String("string".to_string())
+        );
 
         Ok(())
     }

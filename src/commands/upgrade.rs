@@ -1,6 +1,8 @@
 use crate::commands::install::add_application;
 use crate::utils::copy_file_utils::get_composer_directory;
+use crate::utils::docker_compose::compose_down;
 use crate::utils::storage::read_from::get_application_by_id;
+use crate::utils::walk::get_files_with_names;
 use anyhow::anyhow;
 use clap::Args;
 use std::fs::remove_dir_all;
@@ -57,7 +59,16 @@ impl Upgrade {
             self.value_files.clone()
         };
 
-        // First remove the existing directory
+        // Stop containers/networks before removing directory
+        let compose_files = get_files_with_names(
+            composer_id_directory.to_str().unwrap(),
+            &["docker-compose.jinja2", "docker-compose.j2"],
+        );
+        for compose_file in compose_files {
+            compose_down(&compose_file, install_id);
+        }
+
+        // Remove the existing directory
         remove_dir_all(&composer_id_directory)?;
         info!("Upgrading application with ID: {}", install_id);
 

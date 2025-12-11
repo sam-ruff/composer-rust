@@ -1,7 +1,7 @@
 use crate::app;
 use crate::utils::copy_file_utils::{copy_files_with_ignorefile, get_composer_directory};
 use crate::utils::load_values::{get_value_files_as_refs, load_yaml_files};
-use crate::utils::walk::{get_files_with_extension, get_files_with_name};
+use crate::utils::walk::{get_files_with_extensions, get_files_with_names};
 use anyhow::anyhow;
 
 use crate::utils::docker_compose::{compose_pull, compose_up};
@@ -65,7 +65,7 @@ fn get_current_timestamp() -> i64 {
 
 fn verify_required_files(directory: &PathBuf) -> anyhow::Result<()> {
     verify_file_exists("app.yaml", directory)?;
-    verify_file_exists("docker-compose.jinja2", directory)?;
+    verify_either_file_exists(&["docker-compose.jinja2", "docker-compose.j2"], directory)?;
     Ok(())
 }
 
@@ -79,6 +79,20 @@ fn verify_file_exists(file_name: &str, directory: &PathBuf) -> anyhow::Result<()
         )));
     }
     Ok(())
+}
+
+fn verify_either_file_exists(file_names: &[&str], directory: &PathBuf) -> anyhow::Result<()> {
+    for file_name in file_names {
+        let file_path = directory.join(file_name);
+        if file_path.exists() {
+            return Ok(());
+        }
+    }
+    Err(anyhow!(format!(
+        "Could not find any of [{}] in {}",
+        file_names.join(", "),
+        directory.display()
+    )))
 }
 
 pub fn add_application(
@@ -146,7 +160,7 @@ pub fn add_application(
     // For each template render them, then replace them with the actual file
     // Replace the jinja files with templated ones
     let files_to_replace =
-        get_files_with_extension(composer_id_directory.to_str().unwrap(), "jinja2");
+        get_files_with_extensions(composer_id_directory.to_str().unwrap(), &["jinja2", "j2"]);
     trace!("Detected templates: {}", files_to_replace.join(","));
 
     for file_path in files_to_replace {
@@ -160,10 +174,10 @@ pub fn add_application(
 
     let no_run = app::no_run();
 
-    // Find all docker-compose.jinja2 files
-    let all_compose_files = get_files_with_name(
+    // Find all docker-compose template files
+    let all_compose_files = get_files_with_names(
         composer_id_directory.to_str().unwrap(),
-        "docker-compose.jinja2",
+        &["docker-compose.jinja2", "docker-compose.j2"],
     );
     for compose_file in all_compose_files {
         if *app::always_pull() {
