@@ -460,6 +460,12 @@ mod tests {
             &Value::String("HELLO WORLD".to_string())
         );
 
+        assert_eq!(
+            config.get("complex").unwrap(),
+            &Value::String("hello world and HELLO WORLD and world".to_string())
+        );
+
+
         Ok(())
     }
 

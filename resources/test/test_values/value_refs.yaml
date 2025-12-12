@@ -4,3 +4,4 @@ message: "{{ part2 }} {{ part1 }}"
 config:
   greeting: "{{ message }}"
   upper_greeting: "{{ part2 | upper }} {{ part1 | upper }}"
+  complex: "{{ message }} and {{ config.greeting | upper }} and {{ part1 }}"
