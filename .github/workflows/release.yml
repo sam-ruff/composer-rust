@@ -213,15 +213,6 @@ jobs:
         run: |
           cp /home/runner/rpmbuild/RPMS/x86_64/composer-${{ env.RELEASE_VERSION }}-1.x86_64.rpm composer-${{ env.RELEASE_VERSION }}-1.x86_64.rpm
 
-      - name: Push to PackageCloud
-        uses: danielmundi/upload-packagecloud@v1
-        with:
-          PACKAGE-NAME: composer-${{ env.RELEASE_VERSION }}-1.x86_64.rpm
-          PACKAGECLOUD-USERNAME: sam-bytesquid
-          PACKAGECLOUD-DISTRIB: rpm_any/rpm_any
-          PACKAGECLOUD-REPO: composer-production
-          PACKAGECLOUD-TOKEN: ${{ secrets.PACKAGECLOUD_TOKEN }}
-
       - name: Upload latest to latest release
         uses: xresloader/upload-to-github-release@v1
         env:

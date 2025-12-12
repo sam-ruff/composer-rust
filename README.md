@@ -18,11 +18,11 @@ Composer is a command line tool similar to Helm, but designed for Docker Compose
 - jq for installation script
 
 ## Getting Started
-To install Composer, run the following command for Linux:
+The recommended way to install Composer is to run the following command for Linux:
 ```bash
 curl -fsSL https://raw.githubusercontent.com/sam-ruff/composer-rust/master/scripts/install-musl.sh | bash
 ```
-For other platforms, clone the repository and build the binary.
+For other platforms, clone the repository and build the binary or download the binaries below.
 ## Binaries
 The latest releases for OSX, Linux and Windows can be found here.
 ```
@@ -30,19 +30,18 @@ https://github.com/sam-ruff/composer-rust/releases
 ```
 
 ## RPM Installation
-Add Package Cloud Repos
-### Debian
+Download the RPM from the latest release and install:
 ```bash
-curl -s https://packagecloud.io/install/repositories/sam-bytesquid/composer-production/script.deb.sh | sudo bash
+# Download the RPM (replace VERSION with the desired version e.g. 1.22.0)
+curl -LO https://github.com/sam-ruff/composer-rust/releases/download/VERSION/composer-VERSION-1.x86_64.rpm
+
+# Install with rpm
+sudo rpm -i composer-VERSION-1.x86_64.rpm
+
+# Or with yum
+sudo yum localinstall composer-VERSION-1.x86_64.rpm
 ```
-### RPM Other
-```bash
-curl -s https://packagecloud.io/install/repositories/sam-bytesquid/composer-production/script.rpm.sh | sudo bash
-```
-Then do (replacing for the latest version):
-```bash
-sudo yum install composer-1.21-1.x86_64
-```
+Releases are available at https://github.com/sam-ruff/composer-rust/releases
 ## Building from Source
 Note: You will need rust installed also for this.
 https://www.rust-lang.org/tools/install 
@@ -105,7 +104,6 @@ composer.cwd:
 
 Example Usage in a Template:
 ```yaml
-version: "3.9"
 services:
     app:
         image: myapp:latest
@@ -169,7 +167,6 @@ Add them to a file at the root `.composerignore`. This has the same syntax as `.
 All files with the file extension `.jinja2` will be templated. This is useful for also templating config files etc. that are going to be mounted into a container.
 We recommend using a pattern such as the following (using nginx config as an example):
 ```yaml
-version: "3.9"
 services:
   frontend:
     restart: unless-stopped
@@ -208,13 +205,6 @@ Hello {{ world_variable | required }}
 If the value `world_variable` is not included in the values file when templating, the following error will be produced:
 ```
 Failed to render template. Value marked as 'required' must be present
-```
-### Debugging issues
-For Vecs not showing up during debugging as per:
-The temporary workaround is:
-```bash
-rustup install nightly-2024-08-01
-rustup override set nightly-2024-08-01
 ```
 ## Contributing
 Contributions are welcome! Please submit a pull request or create an issue to discuss any changes.
