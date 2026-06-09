@@ -410,6 +410,40 @@ mod tests {
     }
 
     #[test]
+    fn test_verify_required_files_happy_path() -> anyhow::Result<()> {
+        use crate::commands::install::verify_required_files;
+        let current_dir = current_dir()?;
+        let app_dir = RelativePath::new("resources/test/simple").to_logical_path(&current_dir);
+        verify_required_files(&app_dir)
+    }
+
+    #[test]
+    fn test_verify_required_files_missing_app_yaml() -> anyhow::Result<()> {
+        use crate::commands::install::verify_required_files;
+        let current_dir = current_dir()?;
+        let app_dir =
+            RelativePath::new("resources/test/simpleNoApp").to_logical_path(&current_dir);
+        let err = verify_required_files(&app_dir).unwrap_err();
+        assert!(err.to_string().contains("Could not find app.yaml"));
+        Ok(())
+    }
+
+    #[test]
+    fn test_verify_either_file_exists_error_lists_candidates() -> anyhow::Result<()> {
+        use crate::commands::install::verify_either_file_exists;
+        let current_dir = current_dir()?;
+        let app_dir =
+            RelativePath::new("resources/test/templates").to_logical_path(&current_dir);
+        let err =
+            verify_either_file_exists(&["docker-compose.jinja2", "docker-compose.j2"], &app_dir)
+                .unwrap_err();
+        let message = err.to_string();
+        assert!(message.contains("docker-compose.jinja2"));
+        assert!(message.contains("docker-compose.j2"));
+        Ok(())
+    }
+
+    #[test]
     fn test_get_readable_id_format() {
         let id = Install::get_readable_id();
         assert!(!id.is_empty());

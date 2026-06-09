@@ -185,6 +185,20 @@ mod tests {
     }
 
     #[test]
+    fn test_render_template_required_with_value() -> anyhow::Result<()> {
+        let current_dir = current_dir()?;
+        let template = RelativePath::new("resources/test/templates/required.jinja2")
+            .to_logical_path(&current_dir);
+        let yaml = "
+        val: world
+        ";
+        let value_file: Value = serde_yaml::from_str(yaml)?;
+        let output_string = render_template(template.to_str().unwrap(), value_file)?;
+        assert_eq!("Hello, world!".to_string(), output_string);
+        Ok(())
+    }
+
+    #[test]
     fn test_render_template_required_error() -> anyhow::Result<()> {
         // Get the current directory.
         let current_dir = current_dir()?;
