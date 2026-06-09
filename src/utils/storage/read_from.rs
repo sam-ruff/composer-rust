@@ -105,6 +105,16 @@ mod tests {
 
     #[test]
     #[serial]
+    fn test_get_all_from_storage_no_config_returns_empty() -> anyhow::Result<()> {
+        use crate::utils::test_utils::ComposerHomeGuard;
+        let _home = ComposerHomeGuard::new()?;
+        let all_apps = get_all_from_storage()?;
+        assert!(all_apps.is_empty());
+        Ok(())
+    }
+
+    #[test]
+    #[serial]
     fn test_read_bad_file() -> anyhow::Result<()> {
         // Backup config.json
         let (composer_json_config, composer_json_config_backup) = backup_composer_config()?;

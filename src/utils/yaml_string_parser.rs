@@ -120,6 +120,21 @@ mod tests {
     }
 
     #[test]
+    fn test_parse_yaml_string_value_containing_equals() -> anyhow::Result<()> {
+        // Only the first '=' splits the key from the value
+        let actual = parse_yaml_string("foo=bar=baz")?;
+        assert_eq!(Value::String("bar=baz".to_string()), actual["foo"]);
+        Ok(())
+    }
+
+    #[test]
+    fn test_parse_yaml_string_empty_value() -> anyhow::Result<()> {
+        let actual = parse_yaml_string("foo=")?;
+        assert_eq!(Value::String(String::new()), actual["foo"]);
+        Ok(())
+    }
+
+    #[test]
     fn test_parse_yaml_invalid_string() -> anyhow::Result<()> {
         let err = parse_yaml_string("invalid").unwrap_err();
         let actual_err = err.to_string();

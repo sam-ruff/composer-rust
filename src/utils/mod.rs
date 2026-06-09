@@ -3,6 +3,7 @@ pub mod docker_compose;
 pub mod load_values;
 pub mod storage;
 pub mod template;
+#[cfg(test)]
 pub mod test_utils;
 pub mod value_resolver;
 pub(crate) mod walk;

@@ -46,3 +46,70 @@ where
         .with_context(|| "Could not write JSON to config.json")?;
     Ok(())
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::utils::storage::read_from::get_application_by_id;
+    use crate::utils::storage::write_to_storage::append_to_storage;
+    use crate::utils::test_utils::ComposerHomeGuard;
+    use serial_test::serial;
+
+    fn test_app(id: &str) -> PersistedApplication {
+        PersistedApplication {
+            id: id.to_string(),
+            version: "1".to_string(),
+            timestamp: 0,
+            state: ApplicationState::STARTING,
+            app_name: id.to_string(),
+            compose_path: id.to_string(),
+            value_files: vec![],
+        }
+    }
+
+    #[test]
+    #[serial]
+    fn test_update_application_state_round_trip() -> anyhow::Result<()> {
+        let _home = ComposerHomeGuard::new()?;
+        let id = "update_state_round_trip";
+        append_to_storage(&test_app(id))?;
+        update_application_state(id, ApplicationState::ERROR)?;
+        let updated = get_application_by_id(id)?;
+        assert_eq!(ApplicationState::ERROR, updated.state);
+        Ok(())
+    }
+
+    #[test]
+    #[serial]
+    fn test_update_application_state_leaves_other_apps_untouched() -> anyhow::Result<()> {
+        let _home = ComposerHomeGuard::new()?;
+        let target = "update_state_target";
+        let other = "update_state_other";
+        append_to_storage(&test_app(target))?;
+        append_to_storage(&test_app(other))?;
+        update_application_state(target, ApplicationState::RUNNING)?;
+        assert_eq!(
+            ApplicationState::RUNNING,
+            get_application_by_id(target)?.state
+        );
+        assert_eq!(
+            ApplicationState::STARTING,
+            get_application_by_id(other)?.state
+        );
+        Ok(())
+    }
+
+    #[test]
+    #[serial]
+    fn test_update_persisted_application_modifies_fields() -> anyhow::Result<()> {
+        let _home = ComposerHomeGuard::new()?;
+        let id = "update_persisted_fields";
+        append_to_storage(&test_app(id))?;
+        update_persisted_application_by_id(id, |mut application| {
+            application.version = "2".to_string();
+            application
+        })?;
+        assert_eq!("2", get_application_by_id(id)?.version);
+        Ok(())
+    }
+}

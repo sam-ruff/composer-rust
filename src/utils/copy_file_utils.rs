@@ -5,6 +5,12 @@ use dirs;
 use std::path::{Path, PathBuf};
 
 pub fn get_composer_directory() -> anyhow::Result<PathBuf> {
+    // COMPOSER_HOME overrides the default ~/.composer storage location
+    if let Some(dir) = std::env::var_os("COMPOSER_HOME") {
+        if !dir.is_empty() {
+            return Ok(PathBuf::from(dir));
+        }
+    }
     let home_dir = dirs::home_dir()
         .with_context(|| "Could not get home directory, does your OS support dirs::home_dir()")?;
     Ok(home_dir.join(".composer"))
