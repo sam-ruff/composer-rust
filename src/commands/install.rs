@@ -63,13 +63,13 @@ fn get_current_timestamp() -> i64 {
     duration_since_epoch.as_secs() as i64
 }
 
-fn verify_required_files(directory: &PathBuf) -> anyhow::Result<()> {
+fn verify_required_files(directory: &Path) -> anyhow::Result<()> {
     verify_file_exists("app.yaml", directory)?;
     verify_either_file_exists(&["docker-compose.jinja2", "docker-compose.j2"], directory)?;
     Ok(())
 }
 
-fn verify_file_exists(file_name: &str, directory: &PathBuf) -> anyhow::Result<()> {
+fn verify_file_exists(file_name: &str, directory: &Path) -> anyhow::Result<()> {
     let file_path = directory.join(file_name);
     if !file_path.exists() {
         return Err(anyhow!(format!(
@@ -81,7 +81,7 @@ fn verify_file_exists(file_name: &str, directory: &PathBuf) -> anyhow::Result<()
     Ok(())
 }
 
-fn verify_either_file_exists(file_names: &[&str], directory: &PathBuf) -> anyhow::Result<()> {
+fn verify_either_file_exists(file_names: &[&str], directory: &Path) -> anyhow::Result<()> {
     for file_name in file_names {
         let file_path = directory.join(file_name);
         if file_path.exists() {
@@ -99,7 +99,7 @@ pub fn add_application(
     install_id: &String,
     composer_id_directory: &PathBuf,
     is_upgrade: bool,
-    values_files: &Vec<String>,
+    values_files: &[String],
     directory: &PathBuf,
 ) -> anyhow::Result<()> {
     if values_files.is_empty() {
@@ -134,10 +134,10 @@ pub fn add_application(
         ignore_file_optional = Some(composer_ignore_path.as_path());
     }
     // Create the directory to copy the files to
-    fs::create_dir_all(&composer_id_directory)?;
+    fs::create_dir_all(composer_id_directory)?;
 
     // Copy the files to the .composer directory  using the ID as the folder name
-    copy_files_with_ignorefile(directory, &composer_id_directory, ignore_file_optional)?;
+    copy_files_with_ignorefile(directory, composer_id_directory, ignore_file_optional)?;
 
     // Read App.yaml to get some of the needed values
     let app_yaml_path = directory.join("app.yaml");
@@ -147,13 +147,13 @@ pub fn add_application(
         id: install_id.to_string(),
         version: app_yaml.version,
         timestamp: get_current_timestamp(),
-        state: ApplicationState::STARTING,
+        state: ApplicationState::Starting,
         app_name: app_yaml.name,
-        compose_path: fs::canonicalize(&directory)
+        compose_path: fs::canonicalize(directory)
             .unwrap_or_else(|_| directory.clone())
             .to_string_lossy()
             .to_string(),
-        value_files: values_files.clone(),
+        value_files: values_files.to_owned(),
     };
     // Change status of app to starting
     append_to_storage(&application)?;
@@ -193,7 +193,7 @@ pub fn add_application(
 
     // Change status of app to running
     if !no_run {
-        application.state = ApplicationState::RUNNING;
+        application.state = ApplicationState::Running;
     }
     append_to_storage(&application)?;
     Ok(())
@@ -349,7 +349,7 @@ mod tests {
         clean_up_test_folder(id)?;
         assert_eq!(app.id, id);
         assert_eq!(app.version, "1.0.0");
-        assert_eq!(app.state, ApplicationState::RUNNING);
+        assert_eq!(app.state, ApplicationState::Running);
         assert_eq!(app.app_name, "simple-test");
         assert_eq!(app.compose_path, install_dir.to_string_lossy());
         Ok(())

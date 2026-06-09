@@ -23,11 +23,11 @@ where
     let applications = get_all_from_storage()?;
     let new_applications: Vec<PersistedApplication> = applications
         .into_iter()
-        .filter_map(|application| {
+        .map(|application| {
             if application.id == id {
-                Some(modify_application(application))
+                modify_application(application)
             } else {
-                Some(application)
+                application
             }
         })
         .collect();
@@ -60,7 +60,7 @@ mod tests {
             id: id.to_string(),
             version: "1".to_string(),
             timestamp: 0,
-            state: ApplicationState::STARTING,
+            state: ApplicationState::Starting,
             app_name: id.to_string(),
             compose_path: id.to_string(),
             value_files: vec![],
@@ -73,9 +73,9 @@ mod tests {
         let _home = ComposerHomeGuard::new()?;
         let id = "update_state_round_trip";
         append_to_storage(&test_app(id))?;
-        update_application_state(id, ApplicationState::ERROR)?;
+        update_application_state(id, ApplicationState::Error)?;
         let updated = get_application_by_id(id)?;
-        assert_eq!(ApplicationState::ERROR, updated.state);
+        assert_eq!(ApplicationState::Error, updated.state);
         Ok(())
     }
 
@@ -87,13 +87,13 @@ mod tests {
         let other = "update_state_other";
         append_to_storage(&test_app(target))?;
         append_to_storage(&test_app(other))?;
-        update_application_state(target, ApplicationState::RUNNING)?;
+        update_application_state(target, ApplicationState::Running)?;
         assert_eq!(
-            ApplicationState::RUNNING,
+            ApplicationState::Running,
             get_application_by_id(target)?.state
         );
         assert_eq!(
-            ApplicationState::STARTING,
+            ApplicationState::Starting,
             get_application_by_id(other)?.state
         );
         Ok(())

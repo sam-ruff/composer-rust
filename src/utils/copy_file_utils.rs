@@ -161,7 +161,7 @@ mod tests {
                 panic!("Error deleting directory: {:?}", e);
             }
         }
-        fs::create_dir(&path_str).expect(&format!("Could not create directory '{}'.", &path_str));
+        fs::create_dir(&path_str).unwrap_or_else(|_| panic!("Could not create directory '{}'.", &path_str));
         Ok(path_str.parse().unwrap())
     }
 }
