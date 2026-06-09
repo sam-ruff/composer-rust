@@ -30,7 +30,7 @@ owo-colors = { version = "3.5.0", features = ["supports-colors"] }
 petname = "1.1.3"
 walkdir = "2.5.0"
 petgraph = "0.6"
-dirs = "4.0.0"
+dirs = "6.0.0"
 serde_json = "1.0.150"
 chrono = "0.4.45"
 chrono-humanize = "0.2.3"
