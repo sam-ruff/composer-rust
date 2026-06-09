@@ -34,7 +34,7 @@ impl TemplateRenderer for MiniJinjaRenderer {
             .with_context(|| format!("Failed to parse template: {}", template_str))?;
 
         let template = env.get_template("inline")?;
-        let ctx = minijinja::value::Value::from_serializable(context);
+        let ctx = minijinja::value::Value::from_serialize(context);
 
         template
             .render(&ctx)

@@ -61,7 +61,7 @@ pub fn render_template(path: &str, values_yaml: Value) -> anyhow::Result<String>
     let template = env.get_template(template_key)?;
 
     // Convert the merged data to minijinja values
-    let ctx = minijinja::value::Value::from_serializable(&merged_values);
+    let ctx = minijinja::value::Value::from_serialize(&merged_values);
 
     // Render the template with the input data
     let rendered = template.render(&ctx).map_err(|e| {
