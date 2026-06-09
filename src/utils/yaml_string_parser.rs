@@ -31,8 +31,8 @@ use std::borrow::Cow;
 ///
 /// # Arguments
 ///
-/// * `yaml_str` - A string in the format of "x.y.z=foo", where the key path is separated by dots and
-///                followed by an equals sign and a value.
+/// * `yaml_str` - A string in the format of "x.y.z=foo", where the key path is separated by dots
+///   and followed by an equals sign and a value.
 ///
 /// # Returns
 ///

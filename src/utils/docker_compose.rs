@@ -1,4 +1,4 @@
-use crate::utils::storage::models::ApplicationState::ERROR;
+use crate::utils::storage::models::ApplicationState;
 use crate::utils::storage::update_storage::update_application_state;
 use serde::{Deserialize, Serialize};
 use serde_yaml::Value;
@@ -107,7 +107,7 @@ fn compose_up_with(
     let exit_code = runner.run_unbuffered(build_compose_up_args(path));
 
     if exit_code != 0 {
-        if let Err(e) = update_application_state(application_id, ERROR) {
+        if let Err(e) = update_application_state(application_id, ApplicationState::Error) {
             error!(
                 "Could not update application state for app {}: {}",
                 application_id, e
@@ -191,7 +191,7 @@ fn compose_down_with(runner: &impl CommandRunner, path: &str, application_id: &s
     let exit_code = runner.run_unbuffered(build_compose_down_args(path));
 
     if exit_code != 0 {
-        if let Err(e) = update_application_state(application_id, ERROR) {
+        if let Err(e) = update_application_state(application_id, ApplicationState::Error) {
             error!(
                 "Could not update application state for app {}: {}",
                 application_id, e

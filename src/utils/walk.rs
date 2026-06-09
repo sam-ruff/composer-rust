@@ -33,11 +33,10 @@ pub fn get_files_with_name(dir: &str, name: &str) -> Vec<String> {
         .into_iter()
         .filter_map(|entry| {
             if let Ok(entry) = entry {
-                if entry.file_type().is_file() {
-                    if entry.file_name().to_string_lossy() == name {
+                if entry.file_type().is_file()
+                    && entry.file_name().to_string_lossy() == name {
                         return Some(entry.path().to_string_lossy().into_owned());
                     }
-                }
             }
             None
         })
