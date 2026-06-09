@@ -31,8 +31,8 @@ use std::borrow::Cow;
 ///
 /// # Arguments
 ///
-/// * `yaml_str` - A string in the format of "x.y.z=foo", where the key path is separated by dots and
-///                followed by an equals sign and a value.
+/// * `yaml_str` - A string in the format of "x.y.z=foo", where the key path is separated by dots
+///   and followed by an equals sign and a value.
 ///
 /// # Returns
 ///
@@ -116,6 +116,21 @@ mod tests {
         ";
         let expected: Value = from_str(yaml)?;
         assert_eq!(expected, actual);
+        Ok(())
+    }
+
+    #[test]
+    fn test_parse_yaml_string_value_containing_equals() -> anyhow::Result<()> {
+        // Only the first '=' splits the key from the value
+        let actual = parse_yaml_string("foo=bar=baz")?;
+        assert_eq!(Value::String("bar=baz".to_string()), actual["foo"]);
+        Ok(())
+    }
+
+    #[test]
+    fn test_parse_yaml_string_empty_value() -> anyhow::Result<()> {
+        let actual = parse_yaml_string("foo=")?;
+        assert_eq!(Value::String(String::new()), actual["foo"]);
         Ok(())
     }
 

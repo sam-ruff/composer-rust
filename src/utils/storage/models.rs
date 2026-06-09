@@ -12,11 +12,16 @@ pub struct PersistedApplication {
     pub value_files: Vec<String>,
 }
 
+// The serde renames preserve the upper-case variant names already
+// written to existing config.json files.
 #[derive(Debug, Serialize, Deserialize, Clone, PartialEq)]
 pub enum ApplicationState {
-    STARTING,
-    RUNNING,
-    ERROR,
+    #[serde(rename = "STARTING")]
+    Starting,
+    #[serde(rename = "RUNNING")]
+    Running,
+    #[serde(rename = "ERROR")]
+    Error,
 }
 
 use std::fmt;
@@ -24,9 +29,9 @@ use std::fmt;
 impl fmt::Display for ApplicationState {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let state_str = match self {
-            ApplicationState::STARTING => "STARTING",
-            ApplicationState::RUNNING => "RUNNING",
-            ApplicationState::ERROR => "ERROR",
+            ApplicationState::Starting => "STARTING",
+            ApplicationState::Running => "RUNNING",
+            ApplicationState::Error => "ERROR",
         };
         write!(f, "{:<15}", state_str)
     }

@@ -28,17 +28,15 @@ pub fn get_files_with_extensions(dir: &str, extensions: &[&str]) -> Vec<String> 
         .collect()
 }
 
-// TODO needs unit tests
 pub fn get_files_with_name(dir: &str, name: &str) -> Vec<String> {
     WalkDir::new(dir)
         .into_iter()
         .filter_map(|entry| {
             if let Ok(entry) = entry {
-                if entry.file_type().is_file() {
-                    if entry.file_name().to_string_lossy() == name {
+                if entry.file_type().is_file()
+                    && entry.file_name().to_string_lossy() == name {
                         return Some(entry.path().to_string_lossy().into_owned());
                     }
-                }
             }
             None
         })
@@ -65,7 +63,7 @@ pub fn get_files_with_names(dir: &str, names: &[&str]) -> Vec<String> {
 
 #[cfg(test)]
 mod tests {
-    use crate::utils::walk::get_files_with_extensions;
+    use crate::utils::walk::{get_files_with_extensions, get_files_with_name, get_files_with_names};
 
     use relative_path::RelativePath;
     use std::env::current_dir;
@@ -116,6 +114,42 @@ mod tests {
         actual_sorted.sort();
         assert_eq!(expected_sorted, actual_sorted);
         Ok(())
+    }
+
+    #[test]
+    fn test_get_files_with_name() -> anyhow::Result<()> {
+        let current_dir = current_dir()?;
+        let target_dir =
+            RelativePath::new("resources/test/walk_test").to_logical_path(&current_dir);
+        let actual = get_files_with_name(target_dir.to_str().unwrap(), "file1.jinja2");
+        let actual_relative = get_relative_files(actual, &current_dir);
+        assert_eq!(vec!["resources/test/walk_test/file1.jinja2"], actual_relative);
+        Ok(())
+    }
+
+    #[test]
+    fn test_get_files_with_names_finds_nested_files() -> anyhow::Result<()> {
+        let current_dir = current_dir()?;
+        let target_dir =
+            RelativePath::new("resources/test/walk_test").to_logical_path(&current_dir);
+        let actual = get_files_with_names(
+            target_dir.to_str().unwrap(),
+            &["file1.jinja2", "file3.jinja2"],
+        );
+        let mut actual_relative = get_relative_files(actual, &current_dir);
+        actual_relative.sort();
+        let expected = vec![
+            "resources/test/walk_test/file1.jinja2",
+            "resources/test/walk_test/subfolder/file3.jinja2",
+        ];
+        assert_eq!(expected, actual_relative);
+        Ok(())
+    }
+
+    #[test]
+    fn test_get_files_with_name_missing_dir_returns_empty() {
+        let actual = get_files_with_name("/nonexistent/composer-walk-test", "file1.jinja2");
+        assert!(actual.is_empty());
     }
 
     fn get_relative_files(files: Vec<String>, base_dir: &PathBuf) -> Vec<String> {

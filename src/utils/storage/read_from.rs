@@ -47,10 +47,7 @@ pub fn get_application_by_id(id: &str) -> anyhow::Result<PersistedApplication> {
 }
 
 pub fn if_application_exists(id: &str) -> bool {
-    match get_application_by_id(id) {
-        Ok(_) => true,
-        Err(_) => false,
-    }
+    get_application_by_id(id).is_ok()
 }
 
 #[cfg(test)]
@@ -74,7 +71,7 @@ mod tests {
             id: id.to_string(),
             version: "123".to_string(),
             timestamp: 0,
-            state: ApplicationState::STARTING,
+            state: ApplicationState::Starting,
             app_name: id.to_string(),
             compose_path: id.to_string(),
             value_files: vec!["abc".to_string()],
@@ -84,7 +81,7 @@ mod tests {
             id: id2.to_string(),
             version: "123".to_string(),
             timestamp: 0,
-            state: ApplicationState::STARTING,
+            state: ApplicationState::Starting,
             app_name: id.to_string(),
             compose_path: id.to_string(),
             value_files: vec![],
@@ -100,6 +97,16 @@ mod tests {
         // Assert that both app and app2 are in all_apps
         assert!(all_apps.contains(&app));
         assert!(all_apps.contains(&app2));
+        Ok(())
+    }
+
+    #[test]
+    #[serial]
+    fn test_get_all_from_storage_no_config_returns_empty() -> anyhow::Result<()> {
+        use crate::utils::test_utils::ComposerHomeGuard;
+        let _home = ComposerHomeGuard::new()?;
+        let all_apps = get_all_from_storage()?;
+        assert!(all_apps.is_empty());
         Ok(())
     }
 
@@ -131,7 +138,7 @@ mod tests {
             id: id.to_string(),
             version: "123".to_string(),
             timestamp: 0,
-            state: ApplicationState::STARTING,
+            state: ApplicationState::Starting,
             app_name: id.to_string(),
             compose_path: id.to_string(),
             value_files: vec!["abc".to_string(), "def".to_string()],
@@ -141,7 +148,7 @@ mod tests {
             id: id2.to_string(),
             version: "123".to_string(),
             timestamp: 0,
-            state: ApplicationState::STARTING,
+            state: ApplicationState::Starting,
             app_name: id.to_string(),
             compose_path: id.to_string(),
             value_files: vec![],
@@ -150,7 +157,7 @@ mod tests {
         append_to_storage(&app)?;
         append_to_storage(&app2)?;
 
-        let returned_app = get_application_by_id(&id)?;
+        let returned_app = get_application_by_id(id)?;
 
         // Before we assert restore previous config file
         move_file_if_exists(&composer_json_config_backup, &composer_json_config)?;
@@ -169,7 +176,7 @@ mod tests {
             id: id.to_string(),
             version: "123".to_string(),
             timestamp: 0,
-            state: ApplicationState::STARTING,
+            state: ApplicationState::Starting,
             app_name: id.to_string(),
             compose_path: id.to_string(),
             value_files: vec![],

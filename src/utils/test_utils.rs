@@ -9,6 +9,33 @@ use std::path::PathBuf;
 use crate::utils::storage::read_from::if_application_exists;
 use crate::utils::storage::write_to_storage::delete_application_by_id;
 
+/// Points COMPOSER_HOME at a fresh temporary directory so tests read and
+/// write an isolated storage location instead of ~/.composer. The override
+/// is removed and the directory deleted when the guard drops. Tests using
+/// this must be #[serial] as the environment is process-wide.
+pub struct ComposerHomeGuard {
+    temp_dir: tempfile::TempDir,
+}
+
+#[allow(dead_code)]
+impl ComposerHomeGuard {
+    pub fn new() -> anyhow::Result<Self> {
+        let temp_dir = tempfile::tempdir()?;
+        std::env::set_var("COMPOSER_HOME", temp_dir.path());
+        Ok(Self { temp_dir })
+    }
+
+    pub fn path(&self) -> &std::path::Path {
+        self.temp_dir.path()
+    }
+}
+
+impl Drop for ComposerHomeGuard {
+    fn drop(&mut self) {
+        std::env::remove_var("COMPOSER_HOME");
+    }
+}
+
 #[allow(dead_code)]
 pub fn move_file_if_exists(
     source_path: &PathBuf,
