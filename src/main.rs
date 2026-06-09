@@ -42,7 +42,8 @@ fn main() -> anyhow::Result<()> {
     match result {
         Ok(_) => {}
         Err(e) => {
-            error!("{}", e);
+            // Alternate formatting prints the whole context chain, not just the outermost message
+            error!("{:#}", e);
             std::process::exit(1);
         }
     }
