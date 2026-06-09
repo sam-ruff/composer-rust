@@ -52,7 +52,7 @@ impl Install {
     }
 
     fn get_readable_id() -> String {
-        petname::petname(3, "-").to_string()
+        petname::petname(3, "-").unwrap_or_else(|| String::from("unnamed-composer-app"))
     }
 }
 
@@ -407,5 +407,13 @@ mod tests {
         clean_up_test_folder(id)?;
         assert_eq!(app.value_files, value_files);
         Ok(())
+    }
+
+    #[test]
+    fn test_get_readable_id_format() {
+        let id = Install::get_readable_id();
+        assert!(!id.is_empty());
+        assert_eq!(id.matches('-').count(), 2);
+        assert!(id.chars().all(|c| c.is_ascii_lowercase() || c == '-'));
     }
 }
