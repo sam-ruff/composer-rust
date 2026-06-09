@@ -119,7 +119,7 @@ pub fn load_yaml_files(yaml_files: &Vec<&str>) -> anyhow::Result<Value> {
     Ok(resolved_values)
 }
 
-pub fn get_value_files_as_refs(strings: &Vec<String>) -> Vec<&str> {
+pub fn get_value_files_as_refs(strings: &[String]) -> Vec<&str> {
     strings.iter().map(|s| s.as_ref()).collect()
 }
 
@@ -169,11 +169,11 @@ mod tests {
 
         // Check merged map
         assert_eq!(
-            existing_map.get(&"key1".to_string()).unwrap(),
+            existing_map.get("key1".to_string()).unwrap(),
             &Value::String("value1".to_string())
         );
         assert_eq!(
-            existing_map.get(&"key2".to_string()).unwrap(),
+            existing_map.get("key2".to_string()).unwrap(),
             &Value::String("value2".to_string())
         );
     }

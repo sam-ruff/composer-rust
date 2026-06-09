@@ -6,7 +6,7 @@ static NO_RUN: once_cell::sync::OnceCell<bool> = once_cell::sync::OnceCell::new(
 
 pub fn verbosity() -> &'static LevelFilter {
     match VERBOSITY.get() {
-        Some(value) => &value,
+        Some(value) => value,
         None => &LevelFilter::Trace,
     }
 }
@@ -22,7 +22,7 @@ pub fn set_global_always_pull(always_pull: bool) {
 }
 pub fn always_pull() -> &'static bool {
     match ALWAYS_PULL.get() {
-        Some(value) => &value,
+        Some(value) => value,
         None => &false,
     }
 }
@@ -33,7 +33,7 @@ pub fn set_global_no_run(no_run: bool) {
 
 pub fn no_run() -> &'static bool {
     match NO_RUN.get() {
-        Some(value) => &value,
+        Some(value) => value,
         None => &false,
     }
 }

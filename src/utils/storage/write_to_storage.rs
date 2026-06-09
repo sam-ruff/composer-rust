@@ -24,6 +24,7 @@ pub fn append_to_storage(application: &PersistedApplication) -> anyhow::Result<(
         .read(true)
         .write(true)
         .create(true)
+        .truncate(false)
         .open(&composer_json_config_dir)
         .with_context(|| format!("Could not open file '{:?}'", &composer_json_config_dir))?;
 
@@ -109,7 +110,7 @@ mod tests {
             id: id.to_string(),
             version: "123".to_string(),
             timestamp: 0,
-            state: ApplicationState::STARTING,
+            state: ApplicationState::Starting,
             app_name: id.to_string(),
             compose_path: id.to_string(),
             value_files: vec!["123".to_string(), "abc".to_string()],
@@ -124,7 +125,7 @@ mod tests {
         // This might fail but we tried
         let _ = delete_application_by_id(id);
         // Assert that the app serialised and de-serialised correctly
-        assert_eq!(true, app_exist);
+        assert!(app_exist);
         // Assert that the app retrieved from storage is correct
         let retrieved_app = retrieved_app_result?;
         assert_eq!(app, retrieved_app);
@@ -139,7 +140,7 @@ mod tests {
             id: id.to_string(),
             version: "123".to_string(),
             timestamp: 0,
-            state: ApplicationState::STARTING,
+            state: ApplicationState::Starting,
             app_name: id.to_string(),
             compose_path: id.to_string(),
             value_files: vec![],
@@ -157,7 +158,7 @@ mod tests {
         // Assert the error string is correct
         assert_eq!(expected_err, actual_err);
         // Assert the app hasn't been created
-        assert_eq!(false, if_application_exists(id));
+        assert!(!if_application_exists(id));
         Ok(())
     }
 
@@ -169,7 +170,7 @@ mod tests {
             id: id.to_string(),
             version: "123".to_string(),
             timestamp: 0,
-            state: ApplicationState::STARTING,
+            state: ApplicationState::Starting,
             app_name: id.to_string(),
             compose_path: id.to_string(),
             value_files: vec![],
@@ -181,7 +182,33 @@ mod tests {
         // Check if app exists
         let app_exist = if_application_exists(id);
         // Assert that the app serialised and de-serialised correctly
-        assert_eq!(false, app_exist);
+        assert!(!app_exist);
+        Ok(())
+    }
+
+    #[test]
+    #[serial]
+    fn test_delete_removes_app_directory() -> anyhow::Result<()> {
+        use crate::utils::copy_file_utils::get_composer_directory;
+        use crate::utils::test_utils::ComposerHomeGuard;
+        let _home = ComposerHomeGuard::new()?;
+        let id = "delete_removes_app_directory";
+        let app = PersistedApplication {
+            id: id.to_string(),
+            version: "123".to_string(),
+            timestamp: 0,
+            state: ApplicationState::Starting,
+            app_name: id.to_string(),
+            compose_path: id.to_string(),
+            value_files: vec![],
+        };
+        append_to_storage(&app)?;
+        // Create the per-app directory that delete should clean up
+        let app_directory = get_composer_directory()?.join(id);
+        std::fs::create_dir_all(&app_directory)?;
+        delete_application_by_id(id)?;
+        assert!(!app_directory.exists());
+        assert!(!if_application_exists(id));
         Ok(())
     }
 

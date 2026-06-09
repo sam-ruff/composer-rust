@@ -161,7 +161,7 @@ mod tests {
             id: id.to_string(),
             version: "1.0.0".to_string(),
             timestamp: 0,
-            state: ApplicationState::RUNNING,
+            state: ApplicationState::Running,
             app_name: "Test App".to_string(),
             compose_path: install_dir.to_string_lossy().to_string(),
             value_files: vec![], // Empty value_files
@@ -213,7 +213,7 @@ mod tests {
             id: id.to_string(),
             version: "1.0.0".to_string(),
             timestamp: 0,
-            state: ApplicationState::RUNNING,
+            state: ApplicationState::Running,
             app_name: "Test App".to_string(),
             compose_path: install_dir.to_string_lossy().to_string(),
             value_files: vec![values_str.clone()],
@@ -239,7 +239,7 @@ mod tests {
         clean_up_test_folder(id)?;
 
         assert_eq!(app.value_files, vec![new_values_str]);
-        assert_eq!(app.state, ApplicationState::RUNNING);
+        assert_eq!(app.state, ApplicationState::Running);
         Ok(())
     }
 
@@ -269,7 +269,7 @@ mod tests {
             id: id.to_string(),
             version: "1.0.0".to_string(),
             timestamp: 0,
-            state: ApplicationState::RUNNING,
+            state: ApplicationState::Running,
             app_name: "Test App".to_string(),
             compose_path: install_dir.to_string_lossy().to_string(),
             value_files: vec![values_str.clone()],
@@ -291,7 +291,7 @@ mod tests {
         clean_up_test_folder(id)?;
 
         assert_eq!(app.value_files, vec![values_str]);
-        assert_eq!(app.state, ApplicationState::RUNNING);
+        assert_eq!(app.state, ApplicationState::Running);
         Ok(())
     }
 }

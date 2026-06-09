@@ -61,7 +61,7 @@ pub fn render_template(path: &str, values_yaml: Value) -> anyhow::Result<String>
     let template = env.get_template(template_key)?;
 
     // Convert the merged data to minijinja values
-    let ctx = minijinja::value::Value::from_serializable(&merged_values);
+    let ctx = minijinja::value::Value::from_serialize(&merged_values);
 
     // Render the template with the input data
     let rendered = template.render(&ctx).map_err(|e| {
@@ -181,6 +181,20 @@ mod tests {
         let output_string = render_template(template.to_str().unwrap(), value_file)?;
         let expected_string = "Hello, world!".to_string();
         assert_eq!(expected_string, output_string);
+        Ok(())
+    }
+
+    #[test]
+    fn test_render_template_required_with_value() -> anyhow::Result<()> {
+        let current_dir = current_dir()?;
+        let template = RelativePath::new("resources/test/templates/required.jinja2")
+            .to_logical_path(&current_dir);
+        let yaml = "
+        val: world
+        ";
+        let value_file: Value = serde_yaml::from_str(yaml)?;
+        let output_string = render_template(template.to_str().unwrap(), value_file)?;
+        assert_eq!("Hello, world!".to_string(), output_string);
         Ok(())
     }
 
