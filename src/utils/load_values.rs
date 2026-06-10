@@ -4,7 +4,6 @@ use crate::utils::value_resolver::resolve_value_references;
 use crate::utils::yaml_string_parser::parse_yaml_string;
 use anyhow::Context;
 use serde_yaml::mapping::Entry;
-use std::fs::File;
 
 fn merge_maps(existing_map: &mut Mapping, new_map: Mapping) {
     for (new_key, new_value) in new_map {
@@ -76,8 +75,7 @@ pub fn load_yaml_files(yaml_files: &Vec<&str>) -> anyhow::Result<Value> {
         let yaml = if yaml_file.contains("=") {
             parse_yaml_string(yaml_file)?
         } else {
-            read_yaml_file(yaml_file)
-                .with_context(|| format!("Failed to read values YAML file: {}", yaml_file))?
+            read_yaml_file(yaml_file)?
         };
 
         // Start merging here, whether it's a map or not
@@ -125,9 +123,43 @@ pub fn get_value_files_as_refs(strings: &[String]) -> Vec<&str> {
 
 pub fn read_yaml_file(path: &str) -> anyhow::Result<Value> {
     trace!("Loading file: {}", path);
-    let file = File::open(path)?;
-    let yaml: Value = serde_yaml::from_reader(file)?;
-    Ok(yaml)
+    let contents = std::fs::read_to_string(path)
+        .with_context(|| format!("Failed to read values file '{}'", path))?;
+    parse_values_yaml(&contents, path)
+}
+
+fn parse_values_yaml(contents: &str, path: &str) -> anyhow::Result<Value> {
+    serde_yaml::from_str(contents).map_err(|err| describe_yaml_error(&err, contents, path))
+}
+
+/// Builds a self-contained parse error naming the file, the offending line and the
+/// underlying cause, so the top-level error display is actionable on its own.
+fn describe_yaml_error(err: &serde_yaml::Error, contents: &str, path: &str) -> anyhow::Error {
+    let mut message = format!("Invalid YAML in values file '{}': {}", path, err);
+    if let Some(location) = err.location() {
+        if let Some(line) = contents.lines().nth(location.line().saturating_sub(1)) {
+            message.push_str(&format!("\n  line {} | {}", location.line(), line));
+        }
+    }
+    if let Some(tab_line) = first_tab_indented_line(contents) {
+        message.push_str(&format!(
+            "\nHint: YAML does not allow tabs in indentation. Replace the tab(s) on line {} with spaces.",
+            tab_line
+        ));
+    }
+    anyhow::anyhow!(message)
+}
+
+/// Returns the 1-based number of the first line whose leading whitespace contains a tab.
+fn first_tab_indented_line(contents: &str) -> Option<usize> {
+    contents
+        .lines()
+        .position(|line| {
+            line.chars()
+                .take_while(|c| c.is_whitespace())
+                .any(|c| c == '\t')
+        })
+        .map(|index| index + 1)
 }
 
 #[cfg(test)]
@@ -354,6 +386,88 @@ mod tests {
         // Test that `read_yaml_file()` returns an error when given an invalid path
         assert_matches!(read_yaml_file("invalid/path.yaml"), Err(_));
         Ok(())
+    }
+
+    #[test]
+    fn test_missing_file_error_names_the_file() {
+        let err = read_yaml_file("does/not/exist.yaml").unwrap_err();
+        assert!(
+            err.to_string().contains("does/not/exist.yaml"),
+            "Error should name the missing file: {}",
+            err
+        );
+    }
+
+    #[test]
+    fn test_invalid_yaml_error_names_file_line_and_cause() -> anyhow::Result<()> {
+        let temp_dir = tempfile::tempdir()?;
+        let temp_file = temp_dir.path().join("broken.yaml");
+        std::fs::write(&temp_file, "hello: world\nbroken: [unclosed\n")?;
+
+        let err = read_yaml_file(temp_file.to_str().expect("utf-8 path")).unwrap_err();
+        let message = err.to_string();
+        assert!(
+            message.contains("Invalid YAML in values file"),
+            "Should identify the failure as a YAML parse error: {}",
+            message
+        );
+        assert!(
+            message.contains("broken.yaml"),
+            "Should name the offending file: {}",
+            message
+        );
+        assert!(
+            message.contains("line"),
+            "Should point at a line: {}",
+            message
+        );
+        Ok(())
+    }
+
+    #[test]
+    fn test_tab_indented_yaml_error_includes_tab_hint() -> anyhow::Result<()> {
+        let temp_dir = tempfile::tempdir()?;
+        let temp_file = temp_dir.path().join("tabs.yaml");
+        std::fs::write(&temp_file, "hello: world\nfoo:\n\tbar: baz\n")?;
+
+        let err = read_yaml_file(temp_file.to_str().expect("utf-8 path")).unwrap_err();
+        let message = err.to_string();
+        assert!(
+            message.contains("tabs in indentation"),
+            "Should hint that tabs are the problem: {}",
+            message
+        );
+        assert!(
+            message.contains("line 3"),
+            "Should point at the tab-indented line: {}",
+            message
+        );
+        Ok(())
+    }
+
+    #[test]
+    fn test_invalid_yaml_error_propagates_through_load_yaml_files() -> anyhow::Result<()> {
+        let temp_dir = tempfile::tempdir()?;
+        let temp_file = temp_dir.path().join("broken.yaml");
+        std::fs::write(&temp_file, "key: [oops\n")?;
+
+        let files = vec![temp_file.to_str().expect("utf-8 path")];
+        let err = load_yaml_files(&files).unwrap_err();
+        let message = format!("{:#}", err);
+        assert!(
+            message.contains("Invalid YAML in values file"),
+            "Full chain should keep the descriptive parse error: {}",
+            message
+        );
+        Ok(())
+    }
+
+    #[test]
+    fn test_first_tab_indented_line() {
+        assert_eq!(first_tab_indented_line("a: 1\nb: 2\n"), None);
+        assert_eq!(first_tab_indented_line("a:\n\tb: 2\n"), Some(2));
+        assert_eq!(first_tab_indented_line("a:\n  \tb: 2\n"), Some(2));
+        assert_eq!(first_tab_indented_line("a: \"value\twith tab\"\n"), None);
     }
 
     #[test]
