@@ -2,6 +2,7 @@ pub mod copy_file_utils;
 pub mod docker_compose;
 pub mod load_values;
 pub mod self_updater;
+pub mod update_notifier;
 pub mod storage;
 pub mod template;
 #[cfg(test)]
