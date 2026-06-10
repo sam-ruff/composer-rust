@@ -4,8 +4,21 @@ name = "composer"
 version = "0.0.0"
 edition = "2021"
 authors = ["Sam Ruff - sam@bytesquid.com", "Ryan Brogden - ryan@bytesquid.com"]
+description = "A docker-compose package manager."
+license = "MIT"
+repository = "https://github.com/sam-ruff/composer-rust"
 readme = "README.md"
 resolver = "2"
+
+[package.metadata.deb]
+maintainer = "Sam Ruff <sam@bytesquid.com>"
+copyright = "Sam Ruff <sam@bytesquid.com>"
+extended-description = "Composer is a package manager for docker-compose applications. It installs, upgrades, templates and deletes compose applications defined with jinja2 templates and values files."
+section = "utils"
+priority = "optional"
+depends = "$auto"
+recommends = "docker-compose-v2 | docker-compose-plugin"
+assets = [["target/release/composer", "usr/bin/", "755"]]
 
 [profile.release]
 # Link time optimisations https://doc.rust-lang.org/cargo/reference/profiles.html#lto
