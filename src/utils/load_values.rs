@@ -135,6 +135,9 @@ fn parse_values_yaml(contents: &str, path: &str) -> anyhow::Result<Value> {
 /// Builds a self-contained parse error naming the file, the offending line and the
 /// underlying cause, so the top-level error display is actionable on its own.
 fn describe_yaml_error(err: &serde_yaml::Error, contents: &str, path: &str) -> anyhow::Error {
+    if let Some(key) = duplicate_key_in(err) {
+        return describe_duplicate_key_error(&key, contents, path);
+    }
     let mut message = format!("Invalid YAML in values file '{}': {}", path, err);
     if let Some(location) = err.location() {
         if let Some(line) = contents.lines().nth(location.line().saturating_sub(1)) {
@@ -148,6 +151,56 @@ fn describe_yaml_error(err: &serde_yaml::Error, contents: &str, path: &str) -> a
         ));
     }
     anyhow::anyhow!(message)
+}
+
+/// Extracts the key name from serde_yaml's `duplicate entry with key "x"` message.
+/// Returns None for any other kind of parse error.
+fn duplicate_key_in(err: &serde_yaml::Error) -> Option<String> {
+    let display = err.to_string();
+    let marker = "duplicate entry with key \"";
+    let start = display.find(marker)? + marker.len();
+    let rest = &display[start..];
+    let end = rest.find('"')?;
+    Some(rest[..end].to_string())
+}
+
+fn describe_duplicate_key_error(key: &str, contents: &str, path: &str) -> anyhow::Error {
+    let mut message = format!(
+        "Duplicate key \"{}\" in values file '{}': the same key appears more than once within a mapping.",
+        key, path
+    );
+    let lines = lines_defining_key(contents, key);
+    if lines.len() >= 2 {
+        let line_list = lines
+            .iter()
+            .map(|line| line.to_string())
+            .collect::<Vec<_>>()
+            .join(", ");
+        message.push_str(&format!("\n  \"{}\" is defined on lines: {}", key, line_list));
+    }
+    message.push_str(&format!(
+        "\nRemove or rename the duplicate \"{}\" entries so each key is unique.",
+        key
+    ));
+    anyhow::anyhow!(message)
+}
+
+/// Best-effort scan for lines that define the given key, used to point at duplicates.
+fn lines_defining_key(contents: &str, key: &str) -> Vec<usize> {
+    let unquoted = format!("{}:", key);
+    let double_quoted = format!("\"{}\":", key);
+    let single_quoted = format!("'{}':", key);
+    contents
+        .lines()
+        .enumerate()
+        .filter_map(|(index, line)| {
+            let trimmed = line.trim_start();
+            let defines_key = trimmed.starts_with(&unquoted)
+                || trimmed.starts_with(&double_quoted)
+                || trimmed.starts_with(&single_quoted);
+            defines_key.then_some(index + 1)
+        })
+        .collect()
 }
 
 /// Returns the 1-based number of the first line whose leading whitespace contains a tab.
@@ -460,6 +513,98 @@ mod tests {
             message
         );
         Ok(())
+    }
+
+    #[test]
+    fn test_duplicate_top_level_key_error_names_key_file_and_lines() -> anyhow::Result<()> {
+        // Exact repro from issue #33
+        let temp_dir = tempfile::tempdir()?;
+        let temp_file = temp_dir.path().join("dupes.yaml");
+        std::fs::write(&temp_file, "hello: world\nto: you\nhello: world\n")?;
+
+        let err = read_yaml_file(temp_file.to_str().expect("utf-8 path")).unwrap_err();
+        let message = err.to_string();
+        assert!(
+            message.contains("Duplicate key \"hello\""),
+            "Should name the duplicated key: {}",
+            message
+        );
+        assert!(
+            message.contains("dupes.yaml"),
+            "Should name the offending file: {}",
+            message
+        );
+        assert!(
+            message.contains("lines: 1, 3"),
+            "Should point at both definitions: {}",
+            message
+        );
+        Ok(())
+    }
+
+    #[test]
+    fn test_duplicate_nested_key_error_names_key() -> anyhow::Result<()> {
+        let temp_dir = tempfile::tempdir()?;
+        let temp_file = temp_dir.path().join("nested_dupes.yaml");
+        std::fs::write(&temp_file, "outer:\n  inner: 1\n  inner: 2\n")?;
+
+        let err = read_yaml_file(temp_file.to_str().expect("utf-8 path")).unwrap_err();
+        let message = err.to_string();
+        assert!(
+            message.contains("Duplicate key \"inner\""),
+            "Should name the duplicated key: {}",
+            message
+        );
+        assert!(
+            message.contains("lines: 2, 3"),
+            "Should point at both definitions: {}",
+            message
+        );
+        Ok(())
+    }
+
+    #[test]
+    fn test_duplicate_key_error_propagates_through_load_yaml_files() -> anyhow::Result<()> {
+        let temp_dir = tempfile::tempdir()?;
+        let temp_file = temp_dir.path().join("dupes.yaml");
+        std::fs::write(&temp_file, "hello: world\nhello: again\n")?;
+
+        let files = vec![temp_file.to_str().expect("utf-8 path")];
+        let err = load_yaml_files(&files).unwrap_err();
+        assert!(
+            format!("{:#}", err).contains("Duplicate key \"hello\""),
+            "Full chain should keep the duplicate key error: {:#}",
+            err
+        );
+        Ok(())
+    }
+
+    #[test]
+    fn test_non_duplicate_parse_errors_keep_generic_message() -> anyhow::Result<()> {
+        let temp_dir = tempfile::tempdir()?;
+        let temp_file = temp_dir.path().join("broken.yaml");
+        std::fs::write(&temp_file, "key: [oops\n")?;
+
+        let err = read_yaml_file(temp_file.to_str().expect("utf-8 path")).unwrap_err();
+        let message = err.to_string();
+        assert!(
+            message.contains("Invalid YAML in values file"),
+            "Non-duplicate errors should use the generic parse message: {}",
+            message
+        );
+        assert!(
+            !message.contains("Duplicate key"),
+            "Should not misclassify as a duplicate key error: {}",
+            message
+        );
+        Ok(())
+    }
+
+    #[test]
+    fn test_lines_defining_key() {
+        let contents = "hello: 1\n\"hello\": 2\n  'hello': 3\nhelloworld: 4\nother: 5\n";
+        assert_eq!(lines_defining_key(contents, "hello"), vec![1, 2, 3]);
+        assert_eq!(lines_defining_key(contents, "missing"), Vec::<usize>::new());
     }
 
     #[test]
