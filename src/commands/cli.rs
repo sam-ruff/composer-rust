@@ -1,6 +1,7 @@
 use crate::commands::delete::Delete;
 use crate::commands::install::Install;
 use crate::commands::list::List;
+use crate::commands::self_update::SelfUpdate;
 use crate::commands::template::Template;
 use crate::commands::test::Test;
 use crate::commands::upgrade::Upgrade;
@@ -43,6 +44,8 @@ pub enum Cmd {
     ///   completely.
     #[clap(alias = "d", alias = "uninstall")]
     Delete(Delete),
+    /// Updates composer itself to the latest released version
+    SelfUpdate(SelfUpdate),
     // Hidden test function
     Test(Test),
 }
@@ -56,6 +59,7 @@ impl Cli {
             Cmd::Test(test) => test.exec()?,
             Cmd::Template(template) => template.exec()?,
             Cmd::Delete(delete) => delete.exec()?,
+            Cmd::SelfUpdate(self_update) => self_update.exec()?,
         }
         Ok(())
     }
