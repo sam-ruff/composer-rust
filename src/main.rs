@@ -38,7 +38,14 @@ fn main() -> anyhow::Result<()> {
         error!("Docker-compose is not installed. Please install it before using composer.");
         std::process::exit(1);
     }
+    // Update check runs in the background while the command executes;
+    // any notice prints after the command output so nothing is delayed.
+    let update_check = utils::update_notifier::start(
+        env!("CARGO_PKG_VERSION"),
+        cli.is_self_update(),
+    );
     let result = cli.run();
+    utils::update_notifier::finish(update_check);
     match result {
         Ok(_) => {}
         Err(e) => {

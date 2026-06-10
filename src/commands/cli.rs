@@ -51,6 +51,12 @@ pub enum Cmd {
 }
 
 impl Cli {
+    /// The update notice is redundant noise when the user is already
+    /// running self-update.
+    pub fn is_self_update(&self) -> bool {
+        matches!(self.cmd, Cmd::SelfUpdate(_))
+    }
+
     pub fn run(&self) -> anyhow::Result<()> {
         match &self.cmd {
             Cmd::Install(install) => install.exec()?,
