@@ -246,7 +246,7 @@ mod tests {
         };
         let err = test_install_cmd.exec().unwrap_err();
         let actual_err = err.to_string();
-        let expected_err = "Failed to read values YAML file: doesNotExist.yaml".to_string();
+        let expected_err = "Failed to read values file 'doesNotExist.yaml'".to_string();
         clean_up_test_folder(id)?;
         assert_eq!(expected_err, actual_err);
         Ok(())
