@@ -95,7 +95,7 @@ pub fn run_self_update(
 }
 
 /// Parses an `x.y.z` version, tolerating a leading 'v'.
-fn parse_version(version: &str) -> Option<(u64, u64, u64)> {
+pub(crate) fn parse_version(version: &str) -> Option<(u64, u64, u64)> {
     let version = version.trim().trim_start_matches('v');
     let mut parts = version.split('.');
     let major = parts.next()?.parse().ok()?;
