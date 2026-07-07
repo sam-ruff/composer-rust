@@ -1,4 +1,5 @@
 use crate::commands::delete::Delete;
+use crate::commands::inspect::Inspect;
 use crate::commands::install::Install;
 use crate::commands::list::List;
 use crate::commands::self_update::SelfUpdate;
@@ -35,6 +36,12 @@ pub enum Cmd {
     /// List installed composer applications
     #[clap(alias = "ls", alias = "ps")]
     List(List),
+    /// Show all persisted info for an installed application, including the
+    ///   ordered list of value files it was installed with and the fully
+    ///   merged, reference-resolved values that would be handed to the
+    ///   template.
+    #[clap(alias = "describe")]
+    Inspect(Inspect),
     /// Prints the output docker_compose.yaml once the values have been applied. Can
     ///   be used to produce a compose for use outside of the composer install
     ///   environment or for debugging purposes.
@@ -62,6 +69,7 @@ impl Cli {
             Cmd::Install(install) => install.exec()?,
             Cmd::Upgrade(upgrade) => upgrade.exec()?,
             Cmd::List(list) => list.exec()?,
+            Cmd::Inspect(inspect) => inspect.exec()?,
             Cmd::Test(test) => test.exec()?,
             Cmd::Template(template) => template.exec()?,
             Cmd::Delete(delete) => delete.exec()?,
