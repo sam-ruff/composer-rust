@@ -85,6 +85,11 @@ composer [global flags] command [flags] [arguments]
 * `install, i, add`: Install a Docker Compose application using a given Jinja2 template.
 * `upgrade, u, update`: Upgrade an existing Composer application. This is equivalent to running docker-compose up again. Existing services will remain, and only the differences will be applied.
 * `list, ls, ps`: List installed Composer applications.
+* `inspect, describe`: Show all persisted info for a single installed application, including the ordered list of value files it was installed with and the fully merged, reference-resolved values that would be handed to the template. Missing value files are flagged. Add `--json` for a machine-readable document:
+  ```bash
+  composer inspect example
+  composer inspect example --json | jq .application.id
+  ```
 * `template, t`: Print the output docker-compose.yaml after values have been applied. This can be used to produce a Compose file for use outside of the Composer install environment or for debugging purposes. Use `-o` to write to a file:
   ```bash
   composer template -t docker-compose.jinja2 -v values.yaml -o docker-compose.yaml
