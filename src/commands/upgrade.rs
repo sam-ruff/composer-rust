@@ -1,6 +1,7 @@
-use crate::commands::install::add_application;
+use crate::commands::install::{add_application, verify_required_files};
 use crate::utils::copy_file_utils::get_composer_directory;
 use crate::utils::docker_compose::{compose_down_with, CommandRunner, RealCommandRunner};
+use crate::utils::load_values::{get_value_files_as_refs, load_yaml_files};
 use crate::utils::storage::read_from::get_application_by_id;
 use crate::utils::walk::get_files_with_names;
 use anyhow::anyhow;
@@ -116,6 +117,17 @@ impl Upgrade {
         } else {
             self.value_files.clone()
         };
+
+        // Validate the new template and values before anything destructive so
+        // a doomed upgrade leaves the previous install intact and retryable.
+        if !self.directory.exists() {
+            return Err(anyhow!(format!(
+                "Template directory {} does not exist.",
+                self.directory.display()
+            )));
+        }
+        verify_required_files(&self.directory)?;
+        load_yaml_files(&get_value_files_as_refs(&value_files))?;
 
         // Stop containers/networks before removing the directory. By default
         // only compose files absent from the new template version are downed;
@@ -453,6 +465,103 @@ mod tests {
 
         assert_eq!(app.value_files, vec![values_str]);
         assert_eq!(app.state, ApplicationState::Running);
+        Ok(())
+    }
+
+    /// Creates the rendered app directory with a marker file and persists the
+    /// application, simulating a previous successful install.
+    fn persist_app_with_marker(
+        id: &str,
+        install_dir: &Path,
+        stored_value_files: Vec<String>,
+    ) -> anyhow::Result<(PathBuf, PathBuf)> {
+        let composer_directory = get_composer_directory()?;
+        let composer_id_directory = composer_directory.join(id);
+        fs::create_dir_all(&composer_id_directory)?;
+        let marker_path = composer_id_directory.join("previous-render.txt");
+        fs::write(&marker_path, "rendered by the previous install")?;
+        let app = PersistedApplication {
+            id: id.to_string(),
+            version: "1.0.0".to_string(),
+            timestamp: 0,
+            state: ApplicationState::Running,
+            app_name: "Test App".to_string(),
+            compose_path: install_dir.to_string_lossy().to_string(),
+            value_files: stored_value_files,
+        };
+        append_to_storage(&app)?;
+        Ok((composer_id_directory, marker_path))
+    }
+
+    #[test]
+    #[serial]
+    fn test_46_failed_upgrade_invalid_values_keeps_previous_install() -> anyhow::Result<()> {
+        // A values file that cannot be read must fail the upgrade before the
+        // previous rendered directory is removed
+        trace!("Running test_46_failed_upgrade_invalid_values_keeps_previous_install.");
+        let id = "test_46_invalid_values";
+        let current_dir = current_dir()?;
+        let install_dir =
+            RelativePath::new("resources/test/simple/").to_logical_path(&current_dir);
+        let values_dir = RelativePath::new("resources/test/test_values/values.yaml")
+            .to_logical_path(&current_dir);
+        let values_str = values_dir.to_string_lossy().to_string();
+
+        let (composer_id_directory, marker_path) =
+            persist_app_with_marker(id, &install_dir, vec![values_str])?;
+
+        let upgrade_cmd = Upgrade {
+            directory: install_dir,
+            id: Some(id.to_string()),
+            value_files: vec!["/nonexistent/values.yaml".to_string()],
+            always_down: false,
+        };
+
+        let result = upgrade_cmd.exec();
+        let directory_kept = composer_id_directory.exists();
+        let marker_kept = marker_path.exists();
+        // Clean up before assertions in case they fail
+        clean_up_test_folder(id)?;
+
+        assert!(result.is_err(), "Upgrade with an unreadable values file should fail");
+        assert!(directory_kept, "Previous install directory should survive a failed upgrade");
+        assert!(marker_kept, "Previously rendered files should survive a failed upgrade");
+        Ok(())
+    }
+
+    #[test]
+    #[serial]
+    fn test_46_failed_upgrade_missing_template_dir_keeps_previous_install() -> anyhow::Result<()> {
+        // A template directory that does not exist must fail the upgrade
+        // before the previous rendered directory is removed
+        trace!("Running test_46_failed_upgrade_missing_template_dir_keeps_previous_install.");
+        let id = "test_46_missing_template_dir";
+        let current_dir = current_dir()?;
+        let install_dir =
+            RelativePath::new("resources/test/simple/").to_logical_path(&current_dir);
+        let values_dir = RelativePath::new("resources/test/test_values/values.yaml")
+            .to_logical_path(&current_dir);
+        let values_str = values_dir.to_string_lossy().to_string();
+
+        let (composer_id_directory, marker_path) =
+            persist_app_with_marker(id, &install_dir, vec![values_str])?;
+
+        let upgrade_cmd = Upgrade {
+            directory: PathBuf::from("does_not_exist"),
+            id: Some(id.to_string()),
+            value_files: vec![],
+            always_down: false,
+        };
+
+        let result = upgrade_cmd.exec();
+        let directory_kept = composer_id_directory.exists();
+        let marker_kept = marker_path.exists();
+        // Clean up before assertions in case they fail
+        clean_up_test_folder(id)?;
+
+        assert!(result.is_err(), "Upgrade with a missing template directory should fail");
+        assert!(directory_kept, "Previous install directory should survive a failed upgrade");
+        assert!(marker_kept, "Previously rendered files should survive a failed upgrade");
         Ok(())
     }
 }
