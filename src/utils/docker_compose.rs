@@ -156,23 +156,27 @@ fn check_compose_is_valid(compose_path: &str) -> anyhow::Result<()> {
 
 #[derive(Debug, PartialEq, Serialize, Deserialize)]
 struct Compose {
-    services: Option<Vec<String>>,
+    // The compose spec defines services as a mapping; Value also tolerates
+    // the null and empty-sequence forms emitted by some templates.
+    services: Option<Value>,
 }
 
 fn compose_has_no_services(compose_path: &str) -> bool {
     let compose_content = match fs::read_to_string(compose_path) {
         Ok(content) => content,
-        Err(_) => return false, // Error reading file, return false
+        Err(_) => return false, // Unreadable file: conservatively assume it has services
     };
 
-    let compose: Result<Compose, serde_yaml::Error> = serde_yaml::from_str(&compose_content);
+    let compose: Compose = match serde_yaml::from_str(&compose_content) {
+        Ok(compose) => compose,
+        Err(_) => return false, // Unparsable YAML: conservatively assume it has services
+    };
 
-    match compose {
-        Ok(compose_obj) => match compose_obj.services {
-            Some(services) => services.is_empty(),
-            None => true,
-        },
-        Err(_) => false, // Error parsing YAML, return false
+    match compose.services {
+        None | Some(Value::Null) => true,
+        Some(Value::Mapping(services)) => services.is_empty(),
+        Some(Value::Sequence(services)) => services.is_empty(),
+        Some(_) => false,
     }
 }
 
@@ -366,6 +370,44 @@ mod tests {
         // No expectations set: any call to the runner fails the test
         let runner = MockCommandRunner::new();
         compose_up_with(&runner, &path_str(&file), "test_app")
+    }
+
+    #[test]
+    fn test_compose_up_skips_empty_services_mapping() -> anyhow::Result<()> {
+        let file = temp_compose_file("services: {}\n")?;
+        // No expectations set: any call to the runner fails the test
+        let runner = MockCommandRunner::new();
+        compose_up_with(&runner, &path_str(&file), "test_app")
+    }
+
+    #[test]
+    fn test_compose_down_skips_empty_services_mapping() -> anyhow::Result<()> {
+        let file = temp_compose_file("services: {}\n")?;
+        let runner = MockCommandRunner::new();
+        compose_down_with(&runner, &path_str(&file), "test_app");
+        Ok(())
+    }
+
+    #[test]
+    fn test_compose_has_no_services_matrix() -> anyhow::Result<()> {
+        let cases = [
+            (COMPOSE_WITH_SERVICES, false),
+            ("services: {}\n", true),
+            ("services:\n", true),
+            ("services: []\n", true),
+            ("networks: {}\n", true),
+            ("services: [unclosed\n", false),
+        ];
+        for (content, expected) in cases {
+            let file = temp_compose_file(content)?;
+            assert_eq!(
+                expected,
+                compose_has_no_services(&path_str(&file)),
+                "content: {:?}",
+                content
+            );
+        }
+        Ok(())
     }
 
     #[test]
