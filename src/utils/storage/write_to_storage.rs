@@ -15,9 +15,9 @@ pub fn append_to_storage(application: &PersistedApplication) -> anyhow::Result<(
     // Create ~/.composer/config.json if it doesn't exist
     if !composer_json_config_dir.exists() {
         fs::create_dir_all(&composer_directory)
-            .with_context(|| format!("Could not create directory '{:?}'", &composer_directory))?;
+            .with_context(|| format!("Could not create directory '{:?}'", composer_directory))?;
         File::create(&composer_json_config_dir)
-            .with_context(|| format!("Could not create file '{:?}'", &composer_json_config_dir))?;
+            .with_context(|| format!("Could not create file '{:?}'", composer_json_config_dir))?;
     }
 
     let file = OpenOptions::new()
@@ -26,7 +26,7 @@ pub fn append_to_storage(application: &PersistedApplication) -> anyhow::Result<(
         .create(true)
         .truncate(false)
         .open(&composer_json_config_dir)
-        .with_context(|| format!("Could not open file '{:?}'", &composer_json_config_dir))?;
+        .with_context(|| format!("Could not open file '{:?}'", composer_json_config_dir))?;
 
     let mut reader = BufReader::new(file);
     let mut contents = String::new();
@@ -45,7 +45,7 @@ pub fn append_to_storage(application: &PersistedApplication) -> anyhow::Result<(
 
     let writer = BufWriter::new(
         File::create(&composer_json_config_dir)
-            .with_context(|| format!("Could not create file '{:?}'", &composer_json_config_dir))?,
+            .with_context(|| format!("Could not create file '{:?}'", composer_json_config_dir))?,
     );
     serde_json::to_writer(writer, &applications)?;
 
@@ -73,7 +73,7 @@ pub fn delete_application_by_id(id: &str) -> anyhow::Result<()> {
             .write(true)
             .truncate(true)
             .open(&composer_json_config_dir)
-            .with_context(|| format!("Could not open file '{:?}'", &composer_json_config_dir))?;
+            .with_context(|| format!("Could not open file '{:?}'", composer_json_config_dir))?;
         let writer = BufWriter::new(file);
         serde_json::to_writer(writer, &new_applications)
             .with_context(|| "Could not serialize JSON to config.json")?;

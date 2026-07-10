@@ -51,7 +51,7 @@ impl Template {
 
         if self.output_file.is_empty() {
             // Print output to console
-            println!("{}", &rendered_template);
+            println!("{}", rendered_template);
         } else {
             // Output to file
             write(&self.output_file, &rendered_template)?;
