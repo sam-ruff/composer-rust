@@ -63,7 +63,7 @@ fn get_current_timestamp() -> i64 {
     duration_since_epoch.as_secs() as i64
 }
 
-fn verify_required_files(directory: &Path) -> anyhow::Result<()> {
+pub(crate) fn verify_required_files(directory: &Path) -> anyhow::Result<()> {
     verify_file_exists("app.yaml", directory)?;
     verify_either_file_exists(&["docker-compose.jinja2", "docker-compose.j2"], directory)?;
     Ok(())
