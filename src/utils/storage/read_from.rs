@@ -20,7 +20,7 @@ pub fn get_all_from_storage() -> anyhow::Result<Vec<PersistedApplication>> {
         }
         Err(e) => {
             return Err(e)
-                .with_context(|| format!("Could not open file '{:?}'", &composer_json_config_dir))
+                .with_context(|| format!("Could not open file '{:?}'", composer_json_config_dir))
         }
     };
 

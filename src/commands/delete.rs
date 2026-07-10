@@ -51,7 +51,7 @@ impl Delete {
             }
             compose_down_by_id(&id)?;
             delete_application_by_id(&id)?;
-            info!("Deleted application {}", &id);
+            info!("Deleted application {}", id);
         }
         Ok(())
     }
