@@ -1,5 +1,5 @@
 use crate::utils::copy_file_utils::get_composer_directory;
-use crate::utils::docker_compose::compose_down;
+use crate::utils::docker_compose::{compose_down_with, RealCommandRunner, COMPOSE_FILE_NAMES};
 use crate::utils::walk::get_files_with_names;
 use anyhow::anyhow;
 use std::fs;
@@ -81,12 +81,10 @@ pub fn clean_up_test_folder(id: &str) -> anyhow::Result<()> {
 
     // Stop Docker containers/networks BEFORE removing files
     if composer_id_directory.exists() {
-        let compose_files = get_files_with_names(
-            composer_id_directory.to_str().unwrap(),
-            &["docker-compose.jinja2", "docker-compose.j2"],
-        );
+        let compose_files =
+            get_files_with_names(composer_id_directory.to_str().unwrap(), &COMPOSE_FILE_NAMES);
         for compose_file in compose_files {
-            compose_down(&compose_file, id);
+            compose_down_with(&RealCommandRunner, &compose_file, id);
         }
         fs::remove_dir_all(composer_id_directory)?;
     }
