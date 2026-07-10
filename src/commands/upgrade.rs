@@ -1,6 +1,8 @@
 use crate::commands::install::{add_application, verify_required_files};
 use crate::utils::copy_file_utils::get_composer_directory;
-use crate::utils::docker_compose::{compose_down_with, CommandRunner, RealCommandRunner};
+use crate::utils::docker_compose::{
+    compose_down_with, CommandRunner, RealCommandRunner, COMPOSE_FILE_NAMES,
+};
 use crate::utils::load_values::{get_value_files_as_refs, load_yaml_files};
 use crate::utils::storage::read_from::get_application_by_id;
 use crate::utils::walk::get_files_with_names;
@@ -9,8 +11,6 @@ use clap::Args;
 use std::collections::HashSet;
 use std::fs::remove_dir_all;
 use std::path::{Path, PathBuf};
-
-const COMPOSE_FILE_NAMES: [&str; 2] = ["docker-compose.jinja2", "docker-compose.j2"];
 
 /// Upgrades an existing application by re-rendering its templates and running
 /// `docker compose up` again. By default only the deltas are applied and
