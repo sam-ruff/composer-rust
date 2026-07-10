@@ -37,7 +37,7 @@ where
         .write(true)
         .truncate(true)
         .open(&composer_json_config_dir)
-        .with_context(|| format!("Could not open file '{:?}'", &composer_json_config_dir))?;
+        .with_context(|| format!("Could not open file '{:?}'", composer_json_config_dir))?;
     let mut writer = BufWriter::new(file);
     let json_data = serde_json::to_vec(&new_applications)
         .with_context(|| "Could not serialize JSON to config.json")?;
