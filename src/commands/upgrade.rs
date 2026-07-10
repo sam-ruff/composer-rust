@@ -1,13 +1,21 @@
 use crate::commands::install::add_application;
 use crate::utils::copy_file_utils::get_composer_directory;
-use crate::utils::docker_compose::compose_down;
+use crate::utils::docker_compose::{compose_down_with, CommandRunner, RealCommandRunner};
 use crate::utils::storage::read_from::get_application_by_id;
 use crate::utils::walk::get_files_with_names;
 use anyhow::anyhow;
 use clap::Args;
+use std::collections::HashSet;
 use std::fs::remove_dir_all;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
+const COMPOSE_FILE_NAMES: [&str; 2] = ["docker-compose.jinja2", "docker-compose.j2"];
+
+/// Upgrades an existing application by re-rendering its templates and running
+/// `docker compose up` again. By default only the deltas are applied and
+/// unchanged containers keep running. `--always_down` forces a full
+/// `docker compose down` of every compose file before the application is
+/// brought back up.
 #[derive(Debug, Args)]
 pub struct Upgrade {
     #[clap(index = 1)]
@@ -16,6 +24,56 @@ pub struct Upgrade {
     pub id: Option<String>,
     #[clap(short, long)]
     pub value_files: Vec<String>,
+    /// Force a full `docker compose down` of every compose file before
+    /// re-rendering and bringing the application back up. Without it the
+    /// upgrade converges only the deltas and leaves unchanged containers
+    /// running.
+    #[clap(long = "always_down", alias = "always-down")]
+    pub always_down: bool,
+}
+
+/// Selects the compose files that need a `docker compose down` before the
+/// re-render. With `always_down` that is every existing compose file.
+/// Otherwise it is only the files with no counterpart in the new template
+/// directory: their services would never be converged away by the subsequent
+/// `docker compose up`, so they must be stopped now while the rendered file
+/// still exists.
+fn compose_files_to_teardown(
+    always_down: bool,
+    existing_files: &[String],
+    existing_root: &Path,
+    new_files: &[String],
+    new_root: &Path,
+) -> Vec<String> {
+    if always_down {
+        return existing_files.to_vec();
+    }
+    let new_relative: HashSet<PathBuf> = new_files
+        .iter()
+        .filter_map(|file| strip_root(file, new_root))
+        .collect();
+    existing_files
+        .iter()
+        .filter(|file| {
+            strip_root(file, existing_root)
+                .map(|relative| !new_relative.contains(&relative))
+                .unwrap_or(false)
+        })
+        .cloned()
+        .collect()
+}
+
+fn strip_root(file: &str, root: &Path) -> Option<PathBuf> {
+    Path::new(file)
+        .strip_prefix(root)
+        .ok()
+        .map(Path::to_path_buf)
+}
+
+fn teardown_compose_files(runner: &impl CommandRunner, compose_files: &[String], install_id: &str) {
+    for compose_file in compose_files {
+        compose_down_with(runner, compose_file, install_id);
+    }
 }
 
 impl Upgrade {
@@ -59,14 +117,22 @@ impl Upgrade {
             self.value_files.clone()
         };
 
-        // Stop containers/networks before removing directory
-        let compose_files = get_files_with_names(
-            composer_id_directory.to_str().unwrap(),
-            &["docker-compose.jinja2", "docker-compose.j2"],
+        // Stop containers/networks before removing the directory. By default
+        // only compose files absent from the new template version are downed;
+        // everything else is converged by `docker compose up --remove-orphans`.
+        // With --always_down every compose file is downed.
+        let compose_files =
+            get_files_with_names(composer_id_directory.to_str().unwrap(), &COMPOSE_FILE_NAMES);
+        let new_compose_files =
+            get_files_with_names(&self.directory.to_string_lossy(), &COMPOSE_FILE_NAMES);
+        let teardown_files = compose_files_to_teardown(
+            self.always_down,
+            &compose_files,
+            &composer_id_directory,
+            &new_compose_files,
+            &self.directory,
         );
-        for compose_file in compose_files {
-            compose_down(&compose_file, install_id);
-        }
+        teardown_compose_files(&RealCommandRunner, &teardown_files, install_id);
 
         // Remove the existing directory
         remove_dir_all(&composer_id_directory)?;
@@ -87,6 +153,7 @@ impl Upgrade {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::utils::docker_compose::MockCommandRunner;
     use crate::utils::storage::models::{ApplicationState, PersistedApplication};
     use crate::utils::storage::read_from::get_application_by_id;
     use crate::utils::storage::write_to_storage::append_to_storage;
@@ -95,7 +162,96 @@ mod tests {
     use serial_test::serial;
     use std::env::current_dir;
     use std::fs;
+    use std::io::Write;
     use std::path::PathBuf;
+
+    fn compose_file_fixture() -> anyhow::Result<tempfile::NamedTempFile> {
+        let mut file = tempfile::NamedTempFile::new()?;
+        file.write_all(b"services:\n  web:\n    image: busybox\n")?;
+        Ok(file)
+    }
+
+    #[test]
+    fn test_teardown_selects_nothing_when_files_unchanged() {
+        let existing = vec![
+            "/old/docker-compose.jinja2".to_string(),
+            "/old/sub/docker-compose.j2".to_string(),
+        ];
+        let new = vec![
+            "/new/docker-compose.jinja2".to_string(),
+            "/new/sub/docker-compose.j2".to_string(),
+        ];
+        let selected = compose_files_to_teardown(
+            false,
+            &existing,
+            Path::new("/old"),
+            &new,
+            Path::new("/new"),
+        );
+        assert!(selected.is_empty());
+    }
+
+    #[test]
+    fn test_teardown_selects_removed_files_by_default() {
+        let existing = vec![
+            "/old/docker-compose.jinja2".to_string(),
+            "/old/removed/docker-compose.j2".to_string(),
+        ];
+        let new = vec!["/new/docker-compose.jinja2".to_string()];
+        let selected = compose_files_to_teardown(
+            false,
+            &existing,
+            Path::new("/old"),
+            &new,
+            Path::new("/new"),
+        );
+        assert_eq!(selected, vec!["/old/removed/docker-compose.j2".to_string()]);
+    }
+
+    #[test]
+    fn test_teardown_selects_everything_with_always_down() {
+        let existing = vec![
+            "/old/docker-compose.jinja2".to_string(),
+            "/old/sub/docker-compose.j2".to_string(),
+        ];
+        let new = vec![
+            "/new/docker-compose.jinja2".to_string(),
+            "/new/sub/docker-compose.j2".to_string(),
+        ];
+        let selected = compose_files_to_teardown(
+            true,
+            &existing,
+            Path::new("/old"),
+            &new,
+            Path::new("/new"),
+        );
+        assert_eq!(selected, existing);
+    }
+
+    #[test]
+    fn test_teardown_runs_once_per_file() -> anyhow::Result<()> {
+        let file_one = compose_file_fixture()?;
+        let file_two = compose_file_fixture()?;
+        let paths = vec![
+            file_one.path().to_string_lossy().into_owned(),
+            file_two.path().to_string_lossy().into_owned(),
+        ];
+        let mut runner = MockCommandRunner::new();
+        runner
+            .expect_run_unbuffered()
+            .withf(|args| args.iter().any(|a| a == "down"))
+            .times(2)
+            .returning(|_| 0);
+        teardown_compose_files(&runner, &paths, "test_app");
+        Ok(())
+    }
+
+    #[test]
+    fn test_teardown_with_no_files_never_runs() {
+        // No expectations set: any call to the runner fails the test
+        let runner = MockCommandRunner::new();
+        teardown_compose_files(&runner, &[], "test_app");
+    }
 
     #[test]
     #[serial]
@@ -106,6 +262,7 @@ mod tests {
             directory: PathBuf::from("some/directory"),
             id: None,
             value_files: vec![],
+            always_down: false,
         };
         let err = upgrade_cmd.exec().unwrap_err();
         let actual_err = err.to_string();
@@ -127,6 +284,7 @@ mod tests {
             directory: upgrade_dir,
             id: Some(id.to_string()),
             value_files: vec![],
+            always_down: false,
         };
         let err = upgrade_cmd.exec().unwrap_err();
         let actual_err = err.to_string();
@@ -173,6 +331,7 @@ mod tests {
             directory: install_dir.clone(),
             id: Some(id.to_string()),
             value_files: vec![],
+            always_down: false,
         };
 
         let err = upgrade_cmd.exec().unwrap_err();
@@ -229,6 +388,7 @@ mod tests {
             directory: install_dir.clone(),
             id: Some(id.to_string()),
             value_files: vec![new_values_str.clone()],
+            always_down: false,
         };
 
         upgrade_cmd.exec()?;
@@ -281,6 +441,7 @@ mod tests {
             directory: install_dir.clone(),
             id: Some(id.to_string()),
             value_files: vec![],
+            always_down: false,
         };
 
         upgrade_cmd.exec()?;

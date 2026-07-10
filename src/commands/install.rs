@@ -122,7 +122,7 @@ pub fn add_application(
     if !directory.exists() {
         return Err(anyhow!(format!(
             "Template directory {} does not exist.",
-            &directory.display()
+            directory.display()
         )));
     }
     // Check for app.yaml and docker-compose.jinja2
