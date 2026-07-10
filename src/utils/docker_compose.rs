@@ -116,8 +116,11 @@ fn compose_up_with(
                 application_id, e
             );
         }
-        error!("docker compose up has failed for app {}", application_id);
-        std::process::exit(exit_code);
+        return Err(anyhow::anyhow!(
+            "docker compose up failed for app {} with exit code {}",
+            application_id,
+            exit_code
+        ));
     }
     Ok(())
 }
@@ -156,23 +159,27 @@ fn check_compose_is_valid(compose_path: &str) -> anyhow::Result<()> {
 
 #[derive(Debug, PartialEq, Serialize, Deserialize)]
 struct Compose {
-    services: Option<Vec<String>>,
+    // The compose spec defines services as a mapping; Value also tolerates
+    // the null and empty-sequence forms emitted by some templates.
+    services: Option<Value>,
 }
 
 fn compose_has_no_services(compose_path: &str) -> bool {
     let compose_content = match fs::read_to_string(compose_path) {
         Ok(content) => content,
-        Err(_) => return false, // Error reading file, return false
+        Err(_) => return false, // Unreadable file: conservatively assume it has services
     };
 
-    let compose: Result<Compose, serde_yaml::Error> = serde_yaml::from_str(&compose_content);
+    let compose: Compose = match serde_yaml::from_str(&compose_content) {
+        Ok(compose) => compose,
+        Err(_) => return false, // Unparsable YAML: conservatively assume it has services
+    };
 
-    match compose {
-        Ok(compose_obj) => match compose_obj.services {
-            Some(services) => services.is_empty(),
-            None => true,
-        },
-        Err(_) => false, // Error parsing YAML, return false
+    match compose.services {
+        None | Some(Value::Null) => true,
+        Some(Value::Mapping(services)) => services.is_empty(),
+        Some(Value::Sequence(services)) => services.is_empty(),
+        Some(_) => false,
     }
 }
 
@@ -237,6 +244,11 @@ fn compose_pull_with(runner: &impl CommandRunner, path: &str) {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::utils::storage::models::PersistedApplication;
+    use crate::utils::storage::read_from::get_application_by_id;
+    use crate::utils::storage::write_to_storage::append_to_storage;
+    use crate::utils::test_utils::ComposerHomeGuard;
+    use serial_test::serial;
     use std::io::Write;
     use tempfile::NamedTempFile;
 
@@ -307,11 +319,94 @@ mod tests {
     }
 
     #[test]
+    #[serial]
+    fn test_compose_up_failure_returns_error_naming_app() -> anyhow::Result<()> {
+        let _home = ComposerHomeGuard::new()?;
+        let file = temp_compose_file(COMPOSE_WITH_SERVICES)?;
+        let mut runner = MockCommandRunner::new();
+        runner.expect_run_unbuffered().times(1).returning(|_| 17);
+        let err = compose_up_with(&runner, &path_str(&file), "failing_app").unwrap_err();
+        let message = err.to_string();
+        assert!(
+            message.contains("failing_app"),
+            "error should name the app: {}",
+            message
+        );
+        assert!(
+            message.contains("17"),
+            "error should include the exit code: {}",
+            message
+        );
+        Ok(())
+    }
+
+    #[test]
+    #[serial]
+    fn test_compose_up_failure_marks_application_as_error() -> anyhow::Result<()> {
+        let _home = ComposerHomeGuard::new()?;
+        let id = "compose_up_failure_state";
+        append_to_storage(&PersistedApplication {
+            id: id.to_string(),
+            version: "1".to_string(),
+            timestamp: 0,
+            state: ApplicationState::Starting,
+            app_name: id.to_string(),
+            compose_path: id.to_string(),
+            value_files: vec![],
+        })?;
+        let file = temp_compose_file(COMPOSE_WITH_SERVICES)?;
+        let mut runner = MockCommandRunner::new();
+        runner.expect_run_unbuffered().times(1).returning(|_| 1);
+        let result = compose_up_with(&runner, &path_str(&file), id);
+        assert!(result.is_err());
+        assert_eq!(ApplicationState::Error, get_application_by_id(id)?.state);
+        Ok(())
+    }
+
+    #[test]
     fn test_compose_up_skips_file_with_no_services() -> anyhow::Result<()> {
         let file = temp_compose_file("services: []\n")?;
         // No expectations set: any call to the runner fails the test
         let runner = MockCommandRunner::new();
         compose_up_with(&runner, &path_str(&file), "test_app")
+    }
+
+    #[test]
+    fn test_compose_up_skips_empty_services_mapping() -> anyhow::Result<()> {
+        let file = temp_compose_file("services: {}\n")?;
+        // No expectations set: any call to the runner fails the test
+        let runner = MockCommandRunner::new();
+        compose_up_with(&runner, &path_str(&file), "test_app")
+    }
+
+    #[test]
+    fn test_compose_down_skips_empty_services_mapping() -> anyhow::Result<()> {
+        let file = temp_compose_file("services: {}\n")?;
+        let runner = MockCommandRunner::new();
+        compose_down_with(&runner, &path_str(&file), "test_app");
+        Ok(())
+    }
+
+    #[test]
+    fn test_compose_has_no_services_matrix() -> anyhow::Result<()> {
+        let cases = [
+            (COMPOSE_WITH_SERVICES, false),
+            ("services: {}\n", true),
+            ("services:\n", true),
+            ("services: []\n", true),
+            ("networks: {}\n", true),
+            ("services: [unclosed\n", false),
+        ];
+        for (content, expected) in cases {
+            let file = temp_compose_file(content)?;
+            assert_eq!(
+                expected,
+                compose_has_no_services(&path_str(&file)),
+                "content: {:?}",
+                content
+            );
+        }
+        Ok(())
     }
 
     #[test]
