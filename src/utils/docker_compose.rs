@@ -7,6 +7,9 @@ use std::io::{BufRead, BufReader};
 use std::path::Path;
 use std::process::{Command, Stdio};
 
+/// File names recognised as docker compose templates by install, upgrade and delete.
+pub(crate) const COMPOSE_FILE_NAMES: [&str; 2] = ["docker-compose.jinja2", "docker-compose.j2"];
+
 /// Abstraction over external process execution so command orchestration
 /// can be unit tested without spawning real processes.
 #[cfg_attr(test, mockall::automock)]
@@ -178,10 +181,6 @@ fn compose_has_no_services(compose_path: &str) -> bool {
         Some(Value::Sequence(services)) => services.is_empty(),
         Some(_) => false,
     }
-}
-
-pub fn compose_down(path: &str, application_id: &str) {
-    compose_down_with(&RealCommandRunner, path, application_id)
 }
 
 pub(crate) fn compose_down_with(runner: &impl CommandRunner, path: &str, application_id: &str) {

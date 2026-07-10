@@ -4,7 +4,7 @@ use crate::utils::load_values::{get_value_files_as_refs, load_yaml_files};
 use crate::utils::walk::{get_files_with_extensions, get_files_with_names};
 use anyhow::anyhow;
 
-use crate::utils::docker_compose::{compose_pull, compose_up};
+use crate::utils::docker_compose::{compose_pull, compose_up, COMPOSE_FILE_NAMES};
 use crate::utils::storage::app_yaml::load_app_yaml;
 use crate::utils::storage::models::{ApplicationState, PersistedApplication};
 use crate::utils::storage::write_to_storage::append_to_storage;
@@ -175,10 +175,8 @@ pub fn add_application(
     let no_run = app::no_run();
 
     // Find all docker-compose template files
-    let all_compose_files = get_files_with_names(
-        composer_id_directory.to_str().unwrap(),
-        &["docker-compose.jinja2", "docker-compose.j2"],
-    );
+    let all_compose_files =
+        get_files_with_names(composer_id_directory.to_str().unwrap(), &COMPOSE_FILE_NAMES);
     for compose_file in all_compose_files {
         if *app::always_pull() {
             info!("Always pull is enabled. Pulling latest docker images.");
