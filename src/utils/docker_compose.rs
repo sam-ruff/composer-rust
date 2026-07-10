@@ -177,7 +177,7 @@ pub fn compose_down(path: &str, application_id: &str) {
     compose_down_with(&RealCommandRunner, path, application_id)
 }
 
-fn compose_down_with(runner: &impl CommandRunner, path: &str, application_id: &str) {
+pub(crate) fn compose_down_with(runner: &impl CommandRunner, path: &str, application_id: &str) {
     trace!("[EXEC] docker compose down {}", path);
     if compose_has_no_services(path) {
         // This is a valid use-case for sub-compose files
