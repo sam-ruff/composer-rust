@@ -1,6 +1,6 @@
 use crate::commands::install::add_application;
 use crate::utils::copy_file_utils::get_composer_directory;
-use crate::utils::docker_compose::compose_down;
+use crate::utils::docker_compose::{compose_down_with, CommandRunner, RealCommandRunner};
 use crate::utils::storage::read_from::get_application_by_id;
 use crate::utils::walk::get_files_with_names;
 use anyhow::anyhow;
@@ -8,6 +8,11 @@ use clap::Args;
 use std::fs::remove_dir_all;
 use std::path::PathBuf;
 
+/// Upgrades an existing application by re-rendering its templates and running
+/// `docker compose up` again. By default only the deltas are applied and
+/// unchanged containers keep running. `--always_down` forces a full
+/// `docker compose down` of every compose file before the application is
+/// brought back up.
 #[derive(Debug, Args)]
 pub struct Upgrade {
     #[clap(index = 1)]
@@ -16,6 +21,29 @@ pub struct Upgrade {
     pub id: Option<String>,
     #[clap(short, long)]
     pub value_files: Vec<String>,
+    /// Force a full `docker compose down` of every compose file before
+    /// re-rendering and bringing the application back up. Without it the
+    /// upgrade converges only the deltas and leaves unchanged containers
+    /// running.
+    #[clap(long = "always_down")]
+    pub always_down: bool,
+}
+
+/// Tears down every compose file when a full teardown has been requested.
+/// Without `always_down` this is a no-op and the subsequent `docker compose up`
+/// converges only the changed services.
+fn teardown_if_requested(
+    runner: &impl CommandRunner,
+    always_down: bool,
+    compose_files: &[String],
+    install_id: &str,
+) {
+    if !always_down {
+        return;
+    }
+    for compose_file in compose_files {
+        compose_down_with(runner, compose_file, install_id);
+    }
 }
 
 impl Upgrade {
@@ -59,14 +87,19 @@ impl Upgrade {
             self.value_files.clone()
         };
 
-        // Stop containers/networks before removing directory
+        // Optionally stop containers/networks before removing directory. By
+        // default the re-render plus `docker compose up --remove-orphans`
+        // converges only the deltas, leaving unchanged containers running.
         let compose_files = get_files_with_names(
             composer_id_directory.to_str().unwrap(),
             &["docker-compose.jinja2", "docker-compose.j2"],
         );
-        for compose_file in compose_files {
-            compose_down(&compose_file, install_id);
-        }
+        teardown_if_requested(
+            &RealCommandRunner,
+            self.always_down,
+            &compose_files,
+            install_id,
+        );
 
         // Remove the existing directory
         remove_dir_all(&composer_id_directory)?;
@@ -87,6 +120,7 @@ impl Upgrade {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::utils::docker_compose::MockCommandRunner;
     use crate::utils::storage::models::{ApplicationState, PersistedApplication};
     use crate::utils::storage::read_from::get_application_by_id;
     use crate::utils::storage::write_to_storage::append_to_storage;
@@ -95,7 +129,43 @@ mod tests {
     use serial_test::serial;
     use std::env::current_dir;
     use std::fs;
+    use std::io::Write;
     use std::path::PathBuf;
+
+    fn compose_file_fixture() -> anyhow::Result<tempfile::NamedTempFile> {
+        let mut file = tempfile::NamedTempFile::new()?;
+        file.write_all(b"services:\n  web:\n    image: busybox\n")?;
+        Ok(file)
+    }
+
+    #[test]
+    fn test_teardown_skipped_by_default() -> anyhow::Result<()> {
+        // With always_down = false the runner must never be invoked.
+        let file = compose_file_fixture()?;
+        let path = file.path().to_string_lossy().into_owned();
+        let runner = MockCommandRunner::new();
+        teardown_if_requested(&runner, false, &[path], "test_app");
+        Ok(())
+    }
+
+    #[test]
+    fn test_teardown_runs_once_per_file_when_requested() -> anyhow::Result<()> {
+        // With always_down = true a down runs once per compose file.
+        let file_one = compose_file_fixture()?;
+        let file_two = compose_file_fixture()?;
+        let paths = vec![
+            file_one.path().to_string_lossy().into_owned(),
+            file_two.path().to_string_lossy().into_owned(),
+        ];
+        let mut runner = MockCommandRunner::new();
+        runner
+            .expect_run_unbuffered()
+            .withf(|args| args.iter().any(|a| a == "down"))
+            .times(2)
+            .returning(|_| 0);
+        teardown_if_requested(&runner, true, &paths, "test_app");
+        Ok(())
+    }
 
     #[test]
     #[serial]
@@ -106,6 +176,7 @@ mod tests {
             directory: PathBuf::from("some/directory"),
             id: None,
             value_files: vec![],
+            always_down: false,
         };
         let err = upgrade_cmd.exec().unwrap_err();
         let actual_err = err.to_string();
@@ -127,6 +198,7 @@ mod tests {
             directory: upgrade_dir,
             id: Some(id.to_string()),
             value_files: vec![],
+            always_down: false,
         };
         let err = upgrade_cmd.exec().unwrap_err();
         let actual_err = err.to_string();
@@ -173,6 +245,7 @@ mod tests {
             directory: install_dir.clone(),
             id: Some(id.to_string()),
             value_files: vec![],
+            always_down: false,
         };
 
         let err = upgrade_cmd.exec().unwrap_err();
@@ -229,6 +302,7 @@ mod tests {
             directory: install_dir.clone(),
             id: Some(id.to_string()),
             value_files: vec![new_values_str.clone()],
+            always_down: false,
         };
 
         upgrade_cmd.exec()?;
@@ -281,6 +355,7 @@ mod tests {
             directory: install_dir.clone(),
             id: Some(id.to_string()),
             value_files: vec![],
+            always_down: false,
         };
 
         upgrade_cmd.exec()?;
