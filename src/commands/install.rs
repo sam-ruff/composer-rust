@@ -63,7 +63,7 @@ fn get_current_timestamp() -> i64 {
     duration_since_epoch.as_secs() as i64
 }
 
-fn verify_required_files(directory: &Path) -> anyhow::Result<()> {
+pub(crate) fn verify_required_files(directory: &Path) -> anyhow::Result<()> {
     verify_file_exists("app.yaml", directory)?;
     verify_either_file_exists(&["docker-compose.jinja2", "docker-compose.j2"], directory)?;
     Ok(())
@@ -130,7 +130,7 @@ pub fn add_application(
     // Check if there is an ignore file
     let mut ignore_file_optional: Option<&Path> = None;
     let composer_ignore_path = directory.join(".composerignore");
-    if composer_id_directory.exists() {
+    if composer_ignore_path.exists() {
         ignore_file_optional = Some(composer_ignore_path.as_path());
     }
     // Create the directory to copy the files to
@@ -203,6 +203,7 @@ mod tests {
 
     use crate::commands::install::{verify_file_exists, Install};
 
+    use crate::utils::copy_file_utils::get_composer_directory;
     use crate::utils::storage::models::ApplicationState;
     use crate::utils::storage::read_from::get_application_by_id;
     use serial_test::serial;
@@ -350,6 +351,77 @@ mod tests {
         assert_eq!(app.state, ApplicationState::Running);
         assert_eq!(app.app_name, "simple-test");
         assert_eq!(app.compose_path, install_dir.to_string_lossy());
+        Ok(())
+    }
+
+    #[test]
+    #[serial]
+    fn test_44_install_applies_composerignore() -> anyhow::Result<()> {
+        trace!("Running test_44_install_applies_composerignore.");
+        let current_dir = current_dir()?;
+        let install_dir = RelativePath::new("resources/test/simple/").to_logical_path(&current_dir);
+        let values_dir = RelativePath::new("resources/test/test_values/values.yaml")
+            .to_logical_path(&current_dir);
+        let values_str = values_dir.to_string_lossy().to_string();
+        let id = "test_44_install_applies_composerignore";
+        let test_install_cmd = Install {
+            directory: install_dir,
+            id: Some(id.to_string()),
+            value_files: vec![values_str],
+        };
+        test_install_cmd.exec()?;
+
+        let composer_id_directory = get_composer_directory()?.join(id);
+        let ignored_file_copied = composer_id_directory.join(".ignoreme").exists();
+        let compose_file_copied = composer_id_directory.join("docker-compose.jinja2").exists();
+        // Clean up the app before assertions
+        clean_up_test_folder(id)?;
+        assert!(
+            !ignored_file_copied,
+            ".ignoreme is excluded by .composerignore and should not be copied"
+        );
+        assert!(
+            compose_file_copied,
+            "docker-compose.jinja2 should be copied"
+        );
+        Ok(())
+    }
+
+    #[test]
+    #[serial]
+    fn test_44_install_without_composerignore_copies_everything() -> anyhow::Result<()> {
+        trace!("Running test_44_install_without_composerignore_copies_everything.");
+        let current_dir = current_dir()?;
+        let simple_dir = RelativePath::new("resources/test/simple/").to_logical_path(&current_dir);
+        let values_dir = RelativePath::new("resources/test/test_values/values.yaml")
+            .to_logical_path(&current_dir);
+        let values_str = values_dir.to_string_lossy().to_string();
+        // Build a template directory without a .composerignore
+        let template_dir = tempfile::tempdir()?;
+        for file_name in ["app.yaml", "docker-compose.jinja2", ".ignoreme"] {
+            std::fs::copy(simple_dir.join(file_name), template_dir.path().join(file_name))?;
+        }
+        let id = "test_44_install_without_composerignore";
+        let test_install_cmd = Install {
+            directory: template_dir.path().to_path_buf(),
+            id: Some(id.to_string()),
+            value_files: vec![values_str],
+        };
+        test_install_cmd.exec()?;
+
+        let composer_id_directory = get_composer_directory()?.join(id);
+        let ignoreme_copied = composer_id_directory.join(".ignoreme").exists();
+        let compose_file_copied = composer_id_directory.join("docker-compose.jinja2").exists();
+        // Clean up the app before assertions
+        clean_up_test_folder(id)?;
+        assert!(
+            ignoreme_copied,
+            "without a .composerignore every file should be copied"
+        );
+        assert!(
+            compose_file_copied,
+            "docker-compose.jinja2 should be copied"
+        );
         Ok(())
     }
 
