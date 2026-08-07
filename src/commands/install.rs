@@ -1,6 +1,6 @@
 use crate::app;
 use crate::utils::copy_file_utils::{copy_files_with_ignorefile, get_composer_directory};
-use crate::utils::load_values::{get_value_files_as_refs, load_yaml_files};
+use crate::utils::load_values::{get_value_files_as_refs, load_yaml_files, MergeOptions};
 use crate::utils::walk::{get_files_with_extensions, get_files_with_names};
 use anyhow::anyhow;
 
@@ -24,6 +24,12 @@ pub struct Install {
     pub id: Option<String>,
     #[clap(short, long)]
     pub value_files: Vec<String>,
+    /// Later values files wholly replace lists instead of appending to them
+    #[clap(long = "overwrite_lists", alias = "overwrite-lists")]
+    pub overwrite_lists: bool,
+    /// Later values files wholly replace maps instead of deep-merging them
+    #[clap(long = "overwrite_maps", alias = "overwrite-maps")]
+    pub overwrite_maps: bool,
 }
 
 impl Install {
@@ -46,6 +52,10 @@ impl Install {
             false,
             &self.value_files,
             &self.directory,
+            MergeOptions {
+                overwrite_lists: self.overwrite_lists,
+                overwrite_maps: self.overwrite_maps,
+            },
         )?;
 
         Ok(())
@@ -101,6 +111,7 @@ pub fn add_application(
     is_upgrade: bool,
     values_files: &[String],
     directory: &PathBuf,
+    merge_options: MergeOptions,
 ) -> anyhow::Result<()> {
     if values_files.is_empty() {
         let mut correct_word = "install";
@@ -113,7 +124,7 @@ pub fn add_application(
     }
 
     let values = get_value_files_as_refs(values_files);
-    let consolidated_values = load_yaml_files(&values)?;
+    let consolidated_values = load_yaml_files(&values, merge_options)?;
     trace!(
         "Consolidated values: \n```\n{}\n```\n",
         serde_yaml::to_string(&consolidated_values).unwrap()
@@ -154,6 +165,7 @@ pub fn add_application(
             .to_string_lossy()
             .to_string(),
         value_files: values_files.to_owned(),
+        merge_options,
     };
     // Change status of app to starting
     append_to_storage(&application)?;
@@ -222,6 +234,8 @@ mod tests {
             directory: install_dir,
             id: Some(id.to_string()),
             value_files: vec![],
+            overwrite_lists: false,
+            overwrite_maps: false,
         };
         let err = test_install_cmd.exec().unwrap_err();
         let actual_err = err.to_string();
@@ -242,6 +256,8 @@ mod tests {
             directory: install_dir,
             id: Some(id.to_string()),
             value_files: vec![String::from("doesNotExist.yaml")],
+            overwrite_lists: false,
+            overwrite_maps: false,
         };
         let err = test_install_cmd.exec().unwrap_err();
         let actual_err = err.to_string();
@@ -267,6 +283,8 @@ mod tests {
             directory: install_dir,
             id: Some(id.to_string()),
             value_files: vec![values_str],
+            overwrite_lists: false,
+            overwrite_maps: false,
         };
         let err = test_install_cmd.exec().unwrap_err();
         let actual_err = err.to_string();
@@ -289,6 +307,8 @@ mod tests {
             directory: PathBuf::from("does_not_exist"),
             id: Some(id.to_string()),
             value_files: vec![values_str],
+            overwrite_lists: false,
+            overwrite_maps: false,
         };
         let err = test_install_cmd.exec().unwrap_err();
         let actual_err = err.to_string();
@@ -312,6 +332,8 @@ mod tests {
             directory: install_dir,
             id: Some(id.to_string()),
             value_files: vec![values_str],
+            overwrite_lists: false,
+            overwrite_maps: false,
         };
         // Call exec once, so that the folder is created
         test_install_cmd.exec()?;
@@ -339,6 +361,8 @@ mod tests {
             directory: install_dir.clone(),
             id: Some(id.to_string()),
             value_files: vec![values_str],
+            overwrite_lists: false,
+            overwrite_maps: false,
         };
         test_install_cmd.exec()?;
 
@@ -368,6 +392,8 @@ mod tests {
             directory: install_dir,
             id: Some(id.to_string()),
             value_files: vec![values_str],
+            overwrite_lists: false,
+            overwrite_maps: false,
         };
         test_install_cmd.exec()?;
 
@@ -406,6 +432,8 @@ mod tests {
             directory: template_dir.path().to_path_buf(),
             id: Some(id.to_string()),
             value_files: vec![values_str],
+            overwrite_lists: false,
+            overwrite_maps: false,
         };
         test_install_cmd.exec()?;
 
@@ -432,6 +460,8 @@ mod tests {
             directory: PathBuf::from("resources/test/simple/"),
             id: None,
             value_files: vec![],
+            overwrite_lists: false,
+            overwrite_maps: false,
         };
         let result = verify_file_exists("app.yaml", &install.directory);
         assert!(result.is_ok());
@@ -444,6 +474,8 @@ mod tests {
             directory: PathBuf::from("resources/test/simple/"),
             id: None,
             value_files: vec![],
+            overwrite_lists: false,
+            overwrite_maps: false,
         };
 
         let result = verify_file_exists("non_existent_file.txt", &install.directory);
@@ -469,6 +501,8 @@ mod tests {
             directory: install_dir.clone(),
             id: Some(id.to_string()),
             value_files: value_files.clone(),
+            overwrite_lists: false,
+            overwrite_maps: false,
         };
         test_install_cmd.exec()?;
         // Read the created app
@@ -476,6 +510,31 @@ mod tests {
         // Clean up the app after test
         clean_up_test_folder(id)?;
         assert_eq!(app.value_files, value_files);
+        Ok(())
+    }
+
+    #[test]
+    #[serial]
+    fn test_install_persists_merge_options() -> anyhow::Result<()> {
+        let current_dir = current_dir()?;
+        let install_dir = RelativePath::new("resources/test/simple/")
+            .to_logical_path(&current_dir);
+        let values_dir = RelativePath::new("resources/test/test_values/values.yaml")
+            .to_logical_path(&current_dir);
+        let values_str = values_dir.to_string_lossy().to_string();
+        let id = "test_install_persists_merge_options";
+        let test_install_cmd = Install {
+            directory: install_dir.clone(),
+            id: Some(id.to_string()),
+            value_files: vec![values_str],
+            overwrite_lists: true,
+            overwrite_maps: false,
+        };
+        test_install_cmd.exec()?;
+        let app = get_application_by_id(id)?;
+        clean_up_test_folder(id)?;
+        assert!(app.merge_options.overwrite_lists);
+        assert!(!app.merge_options.overwrite_maps);
         Ok(())
     }
 

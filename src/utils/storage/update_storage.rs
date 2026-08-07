@@ -50,6 +50,7 @@ where
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::utils::load_values::MergeOptions;
     use crate::utils::storage::read_from::get_application_by_id;
     use crate::utils::storage::write_to_storage::append_to_storage;
     use crate::utils::test_utils::ComposerHomeGuard;
@@ -64,6 +65,7 @@ mod tests {
             app_name: id.to_string(),
             compose_path: id.to_string(),
             value_files: vec![],
+            merge_options: MergeOptions::default(),
         }
     }
 

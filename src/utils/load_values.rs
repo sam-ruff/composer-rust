@@ -3,17 +3,46 @@ use serde_yaml::{Mapping, Value};
 use crate::utils::value_resolver::resolve_value_references;
 use crate::utils::yaml_string_parser::parse_yaml_string;
 use anyhow::Context;
+use serde::{Deserialize, Serialize};
 use serde_yaml::mapping::Entry;
 
-fn merge_maps(existing_map: &mut Mapping, new_map: Mapping) {
+/// How later values files combine with earlier ones. Default keeps the
+/// historical behaviour: maps deep-merge, lists append.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Serialize, Deserialize)]
+pub struct MergeOptions {
+    #[serde(default)]
+    pub overwrite_lists: bool,
+    #[serde(default)]
+    pub overwrite_maps: bool,
+}
+
+impl MergeOptions {
+    /// Applies optional CLI overrides on top of a fallback (persisted or default).
+    pub fn with_overrides(
+        self,
+        overwrite_lists: Option<bool>,
+        overwrite_maps: Option<bool>,
+    ) -> MergeOptions {
+        MergeOptions {
+            overwrite_lists: overwrite_lists.unwrap_or(self.overwrite_lists),
+            overwrite_maps: overwrite_maps.unwrap_or(self.overwrite_maps),
+        }
+    }
+}
+
+fn merge_maps(existing_map: &mut Mapping, new_map: Mapping, options: MergeOptions) {
     for (new_key, new_value) in new_map {
         let new_value_clone = new_value.clone();
         match existing_map.entry(new_key) {
             Entry::Occupied(mut entry) => match (entry.get_mut(), &new_value) {
-                (Value::Mapping(existing_inner), Value::Mapping(new_inner)) => {
-                    merge_maps(existing_inner, new_inner.clone());
+                (Value::Mapping(existing_inner), Value::Mapping(new_inner))
+                    if !options.overwrite_maps =>
+                {
+                    merge_maps(existing_inner, new_inner.clone(), options);
                 }
-                (Value::Sequence(existing_list), Value::Sequence(new_list)) => {
+                (Value::Sequence(existing_list), Value::Sequence(new_list))
+                    if !options.overwrite_lists =>
+                {
                     existing_list.extend(new_list.clone());
                 }
                 _ => {
@@ -29,11 +58,13 @@ fn merge_maps(existing_map: &mut Mapping, new_map: Mapping) {
 
 /// Loads one or more YAML files or key-value string(s) into a single `serde_yaml::Value` object.
 ///
-/// This function takes a vector of YAML file paths or key-value strings in the format of "x.y.z=foo", and
+/// This function takes a slice of YAML file paths or key-value strings in the format of "x.y.z=foo", and
 /// loads each one into a `serde_yaml::Value` object. If a key-value string is provided, it is parsed into
 /// a YAML mapping using the `parse_yaml_string` function. If a file path is provided, the file is read and
-/// deserialized into a YAML mapping using the `read_yaml_file` function. The resulting mappings are then merged
-/// into a single mapping, with any conflicting values being overwritten by the last value encountered.
+/// deserialized into a YAML mapping using the `read_yaml_file` function. The resulting mappings are merged
+/// in order: by default maps deep-merge and lists append, while scalars and mismatched types are overwritten
+/// by the last value encountered. `MergeOptions` can switch lists and/or maps to overwrite semantics, where
+/// the later value wholly replaces the earlier one.
 ///
 /// # Errors
 ///
@@ -41,34 +72,28 @@ fn merge_maps(existing_map: &mut Mapping, new_map: Mapping) {
 ///
 /// # Examples
 ///
-/// ```
-/// use serde_yaml::Value;
-/// use anyhow::Result;
+/// ```ignore
+/// let yaml_files = vec![
+///     "examples/values1.yaml",
+///     "examples/values2.yaml",
+///     "abc.def.ghi=jkl",
+/// ];
 ///
-/// fn main() -> Result<()> {
-///     let yaml_files = vec![
-///         "examples/values1.yaml",
-///         "examples/values2.yaml",
-///         "abc.def.ghi=jkl",
-///     ];
+/// let yaml_value = load_yaml_files(&yaml_files, MergeOptions::default())?;
 ///
-///     let yaml_value = load_yaml_files(&yaml_files)?;
-///
-///     assert_eq!(yaml_value["foo"]["bar"], Value::String("baz".to_owned()));
-///     assert_eq!(yaml_value["abc"]["def"]["ghi"], Value::String("jkl".to_owned()));
-///
-///     Ok(())
-/// }
+/// assert_eq!(yaml_value["foo"]["bar"], Value::String("baz".to_owned()));
+/// assert_eq!(yaml_value["abc"]["def"]["ghi"], Value::String("jkl".to_owned()));
 /// ```
 ///
 /// # Arguments
 ///
-/// * `yaml_files` - A vector of YAML file paths or key-value strings in the format of "x.y.z=foo".
+/// * `yaml_files` - A slice of YAML file paths or key-value strings in the format of "x.y.z=foo".
+/// * `options` - Controls whether lists and maps merge (default) or overwrite.
 ///
 /// # Returns
 ///
 /// A `serde_yaml::Value` object representing the merged YAML mappings loaded from the input files or strings.
-pub fn load_yaml_files(yaml_files: &Vec<&str>) -> anyhow::Result<Value> {
+pub fn load_yaml_files(yaml_files: &[&str], options: MergeOptions) -> anyhow::Result<Value> {
     let mut yaml_values = Mapping::new();
 
     for yaml_file in yaml_files {
@@ -78,29 +103,8 @@ pub fn load_yaml_files(yaml_files: &Vec<&str>) -> anyhow::Result<Value> {
             read_yaml_file(yaml_file)?
         };
 
-        // Start merging here, whether it's a map or not
-        match &yaml {
-            Value::Mapping(map) => {
-                for (key, value) in map {
-                    match yaml_values.entry(key.clone()) {
-                        Entry::Occupied(mut entry) => match (entry.get_mut(), value) {
-                            (Value::Mapping(existing_inner), Value::Mapping(new_inner)) => {
-                                merge_maps(existing_inner, new_inner.clone());
-                            }
-                            (Value::Sequence(existing_list), Value::Sequence(new_list)) => {
-                                existing_list.extend(new_list.clone());
-                            }
-                            _ => {
-                                entry.insert(value.clone());
-                            }
-                        },
-                        Entry::Vacant(entry) => {
-                            entry.insert(value.clone());
-                        }
-                    }
-                }
-            }
-            // In case top-level structure is not a map
+        match yaml {
+            Value::Mapping(map) => merge_maps(&mut yaml_values, map, options),
             _ => {
                 return Err(anyhow::anyhow!(
                     "Expected top-level YAML structure to be a mapping."
@@ -250,7 +254,7 @@ mod tests {
         );
 
         // Merge maps
-        merge_maps(&mut existing_map, new_map);
+        merge_maps(&mut existing_map, new_map, MergeOptions::default());
 
         // Check merged map
         assert_eq!(
@@ -275,7 +279,7 @@ mod tests {
             values_path.to_str().unwrap(),
             override_path.to_str().unwrap(),
         ];
-        let output = load_yaml_files(&files)?;
+        let output = load_yaml_files(&files, MergeOptions::default())?;
         // Deserialize the expected YAML contents into a struct
         let expected_yaml: ExpectedFullValues = from_str(
             r#"---
@@ -309,7 +313,7 @@ mod tests {
             override_path.to_str().unwrap(),
             override_complex_path.to_str().unwrap(),
         ];
-        let output = load_yaml_files(&files)?;
+        let output = load_yaml_files(&files, MergeOptions::default())?;
         // Deserialize the expected YAML contents into a struct
         let expected_yaml: ExpectedFullValues = from_str(
             r#"---
@@ -345,7 +349,7 @@ mod tests {
             override_complex_path.to_str().unwrap(),
             "foo.bar=manual",
         ];
-        let output = load_yaml_files(&files)?;
+        let output = load_yaml_files(&files, MergeOptions::default())?;
         // Deserialize the expected YAML contents into a struct
         let expected_yaml: ExpectedFullValues = from_str(
             r#"---
@@ -383,7 +387,7 @@ mod tests {
             "world=world",
             "foo.nested.map=wow",
         ];
-        let output = load_yaml_files(&files)?;
+        let output = load_yaml_files(&files, MergeOptions::default())?;
         // Deserialize the expected YAML contents into a struct
         let expected_yaml: ExpectedFullValues = from_str(
             r#"---
@@ -505,7 +509,7 @@ mod tests {
         std::fs::write(&temp_file, "key: [oops\n")?;
 
         let files = vec![temp_file.to_str().expect("utf-8 path")];
-        let err = load_yaml_files(&files).unwrap_err();
+        let err = load_yaml_files(&files, MergeOptions::default()).unwrap_err();
         let message = format!("{:#}", err);
         assert!(
             message.contains("Invalid YAML in values file"),
@@ -570,7 +574,7 @@ mod tests {
         std::fs::write(&temp_file, "hello: world\nhello: again\n")?;
 
         let files = vec![temp_file.to_str().expect("utf-8 path")];
-        let err = load_yaml_files(&files).unwrap_err();
+        let err = load_yaml_files(&files, MergeOptions::default()).unwrap_err();
         assert!(
             format!("{:#}", err).contains("Duplicate key \"hello\""),
             "Full chain should keep the duplicate key error: {:#}",
@@ -635,7 +639,7 @@ mod tests {
         let yaml2: Value = from_str(yaml2_str)?;
 
         if let (Value::Mapping(ref mut map1), Value::Mapping(map2)) = (&mut yaml1, &yaml2) {
-            merge_maps(map1, map2.clone());
+            merge_maps(map1, map2.clone(), MergeOptions::default());
         }
 
         // Now, let's define the expected merged YAML result
@@ -670,7 +674,7 @@ mod tests {
         ];
 
         // Load and merge YAML contents from strings using `load_yaml_files` function
-        let merged_yaml = load_yaml_files(&files)?;
+        let merged_yaml = load_yaml_files(&files, MergeOptions::default())?;
 
         // Now, let's define the expected merged YAML result
         let expected_str = r#"
@@ -692,13 +696,195 @@ mod tests {
     }
 
     #[test]
+    fn test_merge_maps_overwrite_lists_replaces_nested_list() -> anyhow::Result<()> {
+        let yaml1_str = r#"
+        fruit:
+          items:
+            - apple
+            - banana
+          origin: "kent""#;
+
+        let yaml2_str = r#"
+        fruit:
+          items:
+            - orange
+            - cherry"#;
+
+        let mut yaml1: Value = from_str(yaml1_str)?;
+        let yaml2: Value = from_str(yaml2_str)?;
+
+        let options = MergeOptions {
+            overwrite_lists: true,
+            overwrite_maps: false,
+        };
+        if let (Value::Mapping(ref mut map1), Value::Mapping(map2)) = (&mut yaml1, &yaml2) {
+            merge_maps(map1, map2.clone(), options);
+        }
+
+        // The nested list is replaced but the sibling scalar survives the deep merge
+        let expected: Value = from_str(
+            r#"
+        fruit:
+          items:
+            - orange
+            - cherry
+          origin: "kent""#,
+        )?;
+        assert_eq!(expected, yaml1);
+        Ok(())
+    }
+
+    #[test]
+    fn test_merge_maps_overwrite_maps_replaces_nested_map() -> anyhow::Result<()> {
+        let yaml1_str = r#"
+        fruit:
+          origin: "kent"
+          ripe: true
+        items:
+          - apple"#;
+
+        let yaml2_str = r#"
+        fruit:
+          colour: "red"
+        items:
+          - orange"#;
+
+        let mut yaml1: Value = from_str(yaml1_str)?;
+        let yaml2: Value = from_str(yaml2_str)?;
+
+        let options = MergeOptions {
+            overwrite_lists: false,
+            overwrite_maps: true,
+        };
+        if let (Value::Mapping(ref mut map1), Value::Mapping(map2)) = (&mut yaml1, &yaml2) {
+            merge_maps(map1, map2.clone(), options);
+        }
+
+        // The map is wholly replaced while lists still append
+        let expected: Value = from_str(
+            r#"
+        fruit:
+          colour: "red"
+        items:
+          - apple
+          - orange"#,
+        )?;
+        assert_eq!(expected, yaml1);
+        Ok(())
+    }
+
+    #[test]
+    fn test_merge_maps_overwrite_both() -> anyhow::Result<()> {
+        let yaml1_str = r#"
+        fruit:
+          origin: "kent"
+        items:
+          - apple"#;
+
+        let yaml2_str = r#"
+        fruit:
+          colour: "red"
+        items:
+          - orange"#;
+
+        let mut yaml1: Value = from_str(yaml1_str)?;
+        let yaml2: Value = from_str(yaml2_str)?;
+
+        let options = MergeOptions {
+            overwrite_lists: true,
+            overwrite_maps: true,
+        };
+        if let (Value::Mapping(ref mut map1), Value::Mapping(map2)) = (&mut yaml1, &yaml2) {
+            merge_maps(map1, map2.clone(), options);
+        }
+
+        let expected: Value = from_str(
+            r#"
+        fruit:
+          colour: "red"
+        items:
+          - orange"#,
+        )?;
+        assert_eq!(expected, yaml1);
+        Ok(())
+    }
+
+    #[test]
+    fn test_load_yaml_files_overwrite_lists() -> anyhow::Result<()> {
+        let current_dir = current_dir()?;
+        let values_path = RelativePath::new("resources/test/merge_lists/first.yaml")
+            .to_logical_path(&current_dir);
+        let override_path = RelativePath::new("resources/test/merge_lists/second.yaml")
+            .to_logical_path(&current_dir);
+        let files = vec![
+            values_path.to_str().unwrap(),
+            override_path.to_str().unwrap(),
+        ];
+
+        let options = MergeOptions {
+            overwrite_lists: true,
+            overwrite_maps: false,
+        };
+        let merged_yaml = load_yaml_files(&files, options)?;
+
+        let expected: Value = from_str(
+            r#"
+        items:
+          - orange
+          - cherry
+        world: "goodbye""#,
+        )?;
+        assert_eq!(expected, merged_yaml);
+        Ok(())
+    }
+
+    #[test]
+    fn test_load_yaml_files_overwrite_maps() -> anyhow::Result<()> {
+        let temp_dir = tempfile::tempdir()?;
+        let first = temp_dir.path().join("first.yaml");
+        let second = temp_dir.path().join("second.yaml");
+        std::fs::write(&first, "config:\n  host: localhost\n  port: 8080\n")?;
+        std::fs::write(&second, "config:\n  host: remote\n")?;
+
+        let files = vec![first.to_str().unwrap(), second.to_str().unwrap()];
+        let options = MergeOptions {
+            overwrite_lists: false,
+            overwrite_maps: true,
+        };
+        let merged_yaml = load_yaml_files(&files, options)?;
+
+        // The later map wholly replaces the earlier one, so port is gone
+        let expected: Value = from_str("config:\n  host: remote\n")?;
+        assert_eq!(expected, merged_yaml);
+        Ok(())
+    }
+
+    #[test]
+    fn test_merge_options_with_overrides() {
+        let persisted = MergeOptions {
+            overwrite_lists: true,
+            overwrite_maps: false,
+        };
+        // Absent flags keep the fallback
+        assert_eq!(persisted.with_overrides(None, None), persisted);
+        // Explicit flags win in both directions
+        assert_eq!(
+            persisted.with_overrides(Some(false), Some(true)),
+            MergeOptions {
+                overwrite_lists: false,
+                overwrite_maps: true,
+            }
+        );
+    }
+
+    #[test]
     fn test_value_reference_resolution() -> anyhow::Result<()> {
         trace!("Running test_value_reference_resolution.");
         let current_dir = current_dir()?;
         let values_path = RelativePath::new("resources/test/test_values/value_refs.yaml")
             .to_logical_path(&current_dir);
         let files = vec![values_path.to_str().unwrap()];
-        let output = load_yaml_files(&files)?;
+        let output = load_yaml_files(&files, MergeOptions::default())?;
 
         // Check that message is resolved correctly
         assert_eq!(
@@ -739,7 +925,7 @@ mod tests {
             values_path.to_str().unwrap(),
             "greeting={{ world }}",
         ];
-        let output = load_yaml_files(&files)?;
+        let output = load_yaml_files(&files, MergeOptions::default())?;
 
         // The greeting should resolve to the value of world from values.yaml
         assert_eq!(
@@ -765,7 +951,7 @@ c: "{{ a }}"
         std::fs::write(&temp_file, yaml_str)?;
 
         let files = vec![temp_file.to_str().unwrap()];
-        let result = load_yaml_files(&files);
+        let result = load_yaml_files(&files, MergeOptions::default());
 
         assert!(result.is_err());
         let err_msg = result.unwrap_err().to_string();
@@ -787,7 +973,7 @@ c: "{{ a }}"
         let files = vec![values_path.to_str().unwrap()];
 
         // Load should work without any issues when there are no value references
-        let output = load_yaml_files(&files)?;
+        let output = load_yaml_files(&files, MergeOptions::default())?;
 
         // Verify the values are loaded correctly
         assert_eq!(

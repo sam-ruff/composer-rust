@@ -52,6 +52,7 @@ pub fn if_application_exists(id: &str) -> bool {
 
 #[cfg(test)]
 mod tests {
+    use crate::utils::load_values::MergeOptions;
     use crate::utils::storage::models::{ApplicationState, PersistedApplication};
     use crate::utils::storage::read_from::{get_all_from_storage, get_application_by_id};
     use crate::utils::storage::write_to_storage::append_to_storage;
@@ -75,6 +76,7 @@ mod tests {
             app_name: id.to_string(),
             compose_path: id.to_string(),
             value_files: vec!["abc".to_string()],
+            merge_options: MergeOptions::default(),
         };
         let id2 = "test_get_all_from_storage_sunny_day_2";
         let app2 = PersistedApplication {
@@ -85,6 +87,7 @@ mod tests {
             app_name: id.to_string(),
             compose_path: id.to_string(),
             value_files: vec![],
+            merge_options: MergeOptions::default(),
         };
         // Append both apps to storage
         append_to_storage(&app)?;
@@ -142,6 +145,7 @@ mod tests {
             app_name: id.to_string(),
             compose_path: id.to_string(),
             value_files: vec!["abc".to_string(), "def".to_string()],
+            merge_options: MergeOptions::default(),
         };
         let id2 = "not_looked_for";
         let app2 = PersistedApplication {
@@ -152,6 +156,7 @@ mod tests {
             app_name: id.to_string(),
             compose_path: id.to_string(),
             value_files: vec![],
+            merge_options: MergeOptions::default(),
         };
         // Append both apps to storage
         append_to_storage(&app)?;
@@ -180,6 +185,7 @@ mod tests {
             app_name: id.to_string(),
             compose_path: id.to_string(),
             value_files: vec![],
+            merge_options: MergeOptions::default(),
         };
         // Append both apps to storage
         append_to_storage(&app)?;

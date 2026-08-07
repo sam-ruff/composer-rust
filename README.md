@@ -82,15 +82,15 @@ composer [global flags] command [flags] [arguments]
 * `-p, --always_pull`: If set, Composer will attempt to pull all images specified in the template.jinja file before installing or upgrading an application.
 
 ### Commands
-* `install, i, add`: Install a Docker Compose application using a given Jinja2 template.
-* `upgrade, u, update`: Upgrade an existing Composer application. This is equivalent to running docker-compose up again. Existing services will remain, and only the differences will be applied.
+* `install, i, add`: Install a Docker Compose application using a given Jinja2 template. Use `--overwrite_lists` and/or `--overwrite_maps` to change how multiple values files are combined (see Merging values files).
+* `upgrade, u, update`: Upgrade an existing Composer application. This is equivalent to running docker-compose up again. Existing services will remain, and only the differences will be applied. The merge strategy chosen at install time is reused; pass `--overwrite_lists[=true|false]` or `--overwrite_maps[=true|false]` to change it.
 * `list, ls, ps`: List installed Composer applications.
 * `inspect, describe`: Show all persisted info for a single installed application, including the ordered list of value files it was installed with and the fully merged, reference-resolved values that would be handed to the template. Missing value files are flagged. Add `--json` for a machine-readable document:
   ```bash
   composer inspect example
   composer inspect example --json | jq .application.id
   ```
-* `template, t`: Print the output docker-compose.yaml after values have been applied. This can be used to produce a Compose file for use outside of the Composer install environment or for debugging purposes. Use `-o` to write to a file:
+* `template, t`: Print the output docker-compose.yaml after values have been applied. This can be used to produce a Compose file for use outside of the Composer install environment or for debugging purposes. Use `-o` to write to a file. Supports `--overwrite_lists` and `--overwrite_maps` (see Merging values files):
   ```bash
   composer template -t docker-compose.jinja2 -v values.yaml -o docker-compose.yaml
   ```
@@ -183,6 +183,19 @@ services:
         target: /usr/share/nginx/html/config/config.json
 ```
 In this example a templated config file is mounted in as `.json` so that its picked up correctly post-templating. This can be very powerful when switching between environments.
+
+## Merging values files
+When more than one values file (or inline `key=value` override) is passed with `-v`, they are combined in the order given. By default maps are deep-merged and lists are appended, with scalars overwritten by the last value encountered:
+```bash
+# base.yaml has items: [apple], override.yaml has items: [orange]
+composer template -t docker-compose.jinja2 -v base.yaml -v override.yaml
+# items becomes [apple, orange]
+```
+Two flags switch to overwrite semantics, where the later value wholly replaces the earlier one:
+* `--overwrite_lists`: a later list replaces the earlier list instead of appending to it.
+* `--overwrite_maps`: a later map replaces the earlier map instead of deep-merging into it.
+
+Both flags are available on `install`, `upgrade` and `template`. The strategy used at install time is persisted with the application and reused on `upgrade` and `inspect`, just like the value files themselves. On `upgrade` the flags accept an explicit value, so `--overwrite_lists=false` reverts a previously persisted overwrite back to appending.
 
 ## Value References
 Values files support referencing other values using Jinja2 syntax. References are resolved after all values files are merged.

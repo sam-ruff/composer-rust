@@ -93,6 +93,7 @@ pub fn delete_application_by_id(id: &str) -> anyhow::Result<()> {
 
 #[cfg(test)]
 mod tests {
+    use crate::utils::load_values::MergeOptions;
     use crate::utils::storage::models::{ApplicationState, PersistedApplication};
     use crate::utils::storage::read_from::{get_application_by_id, if_application_exists};
     use crate::utils::storage::write_to_storage::{append_to_storage, delete_application_by_id};
@@ -114,6 +115,7 @@ mod tests {
             app_name: id.to_string(),
             compose_path: id.to_string(),
             value_files: vec!["123".to_string(), "abc".to_string()],
+            merge_options: MergeOptions::default(),
         };
         // Append the app to storage
         append_to_storage(&app)?;
@@ -144,6 +146,7 @@ mod tests {
             app_name: id.to_string(),
             compose_path: id.to_string(),
             value_files: vec![],
+            merge_options: MergeOptions::default(),
         };
         // Backup config.json
         let (composer_json_config, composer_json_config_backup) = backup_composer_config()?;
@@ -174,6 +177,7 @@ mod tests {
             app_name: id.to_string(),
             compose_path: id.to_string(),
             value_files: vec![],
+            merge_options: MergeOptions::default(),
         };
         // Append the app to storage
         append_to_storage(&app)?;
@@ -201,6 +205,7 @@ mod tests {
             app_name: id.to_string(),
             compose_path: id.to_string(),
             value_files: vec![],
+            merge_options: MergeOptions::default(),
         };
         append_to_storage(&app)?;
         // Create the per-app directory that delete should clean up
