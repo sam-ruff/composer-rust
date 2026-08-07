@@ -1,6 +1,6 @@
 use anyhow::anyhow;
 
-use crate::utils::load_values::{get_value_files_as_refs, load_yaml_files};
+use crate::utils::load_values::{get_value_files_as_refs, load_yaml_files, MergeOptions};
 use crate::utils::template::render_template;
 
 use clap::Args;
@@ -16,6 +16,12 @@ pub struct Template {
     pub value_files: Vec<String>,
     #[arg(short, long, default_value_t = String::new())]
     pub output_file: String,
+    /// Later values files wholly replace lists instead of appending to them
+    #[arg(long = "overwrite_lists", alias = "overwrite-lists")]
+    pub overwrite_lists: bool,
+    /// Later values files wholly replace maps instead of deep-merging them
+    #[arg(long = "overwrite_maps", alias = "overwrite-maps")]
+    pub overwrite_maps: bool,
 }
 
 impl Template {
@@ -35,7 +41,11 @@ impl Template {
         }
 
         let values: Vec<&str> = get_value_files_as_refs(&self.value_files);
-        let consolidated_values: serde_yaml::Value = load_yaml_files(&values)?;
+        let merge_options = MergeOptions {
+            overwrite_lists: self.overwrite_lists,
+            overwrite_maps: self.overwrite_maps,
+        };
+        let consolidated_values: serde_yaml::Value = load_yaml_files(&values, merge_options)?;
 
         trace!(
             "Consolidated values: \n```\n{}\n```\n",
@@ -87,6 +97,8 @@ mod tests {
             template: template_path.to_owned(),
             value_files: vec![values_path.to_str().unwrap().to_owned()],
             output_file: String::new(),
+            overwrite_lists: false,
+            overwrite_maps: false,
         };
 
         test_template_cmd.exec()?;
@@ -112,6 +124,8 @@ mod tests {
             template: template_path.to_owned(),
             value_files: vec![values_path.to_str().unwrap().to_owned()],
             output_file: output_path.to_str().unwrap().to_owned(),
+            overwrite_lists: false,
+            overwrite_maps: false,
         };
 
         test_template_cmd.exec()?;
@@ -130,6 +144,8 @@ mod tests {
             template: PathBuf::new(),
             value_files: vec![],
             output_file: String::new(),
+            overwrite_lists: false,
+            overwrite_maps: false,
         };
 
         let err = test_template_cmd.exec().err().unwrap();
@@ -155,6 +171,8 @@ mod tests {
             template: template_path.to_owned(),
             value_files: vec![],
             output_file: String::new(),
+            overwrite_lists: false,
+            overwrite_maps: false,
         };
 
         let err = test_template_cmd.exec().err().unwrap();

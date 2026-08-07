@@ -31,6 +31,28 @@ pub struct Upgrade {
     /// running.
     #[clap(long = "always_down", alias = "always-down")]
     pub always_down: bool,
+    /// Later values files wholly replace lists instead of appending. Defaults
+    /// to the choice persisted at install time; pass =false to revert to
+    /// appending.
+    #[clap(
+        long = "overwrite_lists",
+        alias = "overwrite-lists",
+        num_args = 0..=1,
+        require_equals = true,
+        default_missing_value = "true"
+    )]
+    pub overwrite_lists: Option<bool>,
+    /// Later values files wholly replace maps instead of deep-merging.
+    /// Defaults to the choice persisted at install time; pass =false to
+    /// revert to deep-merging.
+    #[clap(
+        long = "overwrite_maps",
+        alias = "overwrite-maps",
+        num_args = 0..=1,
+        require_equals = true,
+        default_missing_value = "true"
+    )]
+    pub overwrite_maps: Option<bool>,
 }
 
 /// Selects the compose files that need a `docker compose down` before the
@@ -102,10 +124,12 @@ impl Upgrade {
             )));
         }
 
-        // Determine the value files to use
-        let value_files = if self.value_files.is_empty() {
+        // Determine the value files and merge strategy to use, falling back
+        // to what was persisted at install time
+        let persisted = get_application_by_id(install_id);
+        let (value_files, fallback_options) = if self.value_files.is_empty() {
             // Retrieve the persisted application
-            let application = get_application_by_id(install_id)?;
+            let application = persisted?;
             // Use the previously stored value files
             if application.value_files.is_empty() {
                 return Err(anyhow!(
@@ -113,10 +137,15 @@ impl Upgrade {
                     install_id
                 ));
             }
-            application.value_files.clone()
+            (application.value_files.clone(), application.merge_options)
         } else {
-            self.value_files.clone()
+            (
+                self.value_files.clone(),
+                persisted.map(|a| a.merge_options).unwrap_or_default(),
+            )
         };
+        let merge_options =
+            fallback_options.with_overrides(self.overwrite_lists, self.overwrite_maps);
 
         // Validate the new template and values before anything destructive so
         // a doomed upgrade leaves the previous install intact and retryable.
@@ -127,7 +156,7 @@ impl Upgrade {
             )));
         }
         verify_required_files(&self.directory)?;
-        load_yaml_files(&get_value_files_as_refs(&value_files))?;
+        load_yaml_files(&get_value_files_as_refs(&value_files), merge_options)?;
 
         // Stop containers/networks before removing the directory. By default
         // only compose files absent from the new template version are downed;
@@ -156,6 +185,7 @@ impl Upgrade {
             true,
             &value_files,
             &self.directory,
+            merge_options,
         )?;
 
         Ok(())
@@ -166,6 +196,7 @@ impl Upgrade {
 mod tests {
     use super::*;
     use crate::utils::docker_compose::MockCommandRunner;
+    use crate::utils::load_values::MergeOptions;
     use crate::utils::storage::models::{ApplicationState, PersistedApplication};
     use crate::utils::storage::read_from::get_application_by_id;
     use crate::utils::storage::write_to_storage::append_to_storage;
@@ -275,6 +306,8 @@ mod tests {
             id: None,
             value_files: vec![],
             always_down: false,
+            overwrite_lists: None,
+            overwrite_maps: None,
         };
         let err = upgrade_cmd.exec().unwrap_err();
         let actual_err = err.to_string();
@@ -297,6 +330,8 @@ mod tests {
             id: Some(id.to_string()),
             value_files: vec![],
             always_down: false,
+            overwrite_lists: None,
+            overwrite_maps: None,
         };
         let err = upgrade_cmd.exec().unwrap_err();
         let actual_err = err.to_string();
@@ -335,6 +370,7 @@ mod tests {
             app_name: "Test App".to_string(),
             compose_path: install_dir.to_string_lossy().to_string(),
             value_files: vec![], // Empty value_files
+            merge_options: MergeOptions::default(),
         };
         append_to_storage(&app)?;
 
@@ -344,6 +380,8 @@ mod tests {
             id: Some(id.to_string()),
             value_files: vec![],
             always_down: false,
+            overwrite_lists: None,
+            overwrite_maps: None,
         };
 
         let err = upgrade_cmd.exec().unwrap_err();
@@ -388,6 +426,7 @@ mod tests {
             app_name: "Test App".to_string(),
             compose_path: install_dir.to_string_lossy().to_string(),
             value_files: vec![values_str.clone()],
+            merge_options: MergeOptions::default(),
         };
         append_to_storage(&app)?;
 
@@ -401,6 +440,8 @@ mod tests {
             id: Some(id.to_string()),
             value_files: vec![new_values_str.clone()],
             always_down: false,
+            overwrite_lists: None,
+            overwrite_maps: None,
         };
 
         upgrade_cmd.exec()?;
@@ -445,6 +486,7 @@ mod tests {
             app_name: "Test App".to_string(),
             compose_path: install_dir.to_string_lossy().to_string(),
             value_files: vec![values_str.clone()],
+            merge_options: MergeOptions::default(),
         };
         append_to_storage(&app)?;
 
@@ -454,6 +496,8 @@ mod tests {
             id: Some(id.to_string()),
             value_files: vec![],
             always_down: false,
+            overwrite_lists: None,
+            overwrite_maps: None,
         };
 
         upgrade_cmd.exec()?;
@@ -488,6 +532,7 @@ mod tests {
             app_name: "Test App".to_string(),
             compose_path: install_dir.to_string_lossy().to_string(),
             value_files: stored_value_files,
+            merge_options: MergeOptions::default(),
         };
         append_to_storage(&app)?;
         Ok((composer_id_directory, marker_path))
@@ -515,6 +560,8 @@ mod tests {
             id: Some(id.to_string()),
             value_files: vec!["/nonexistent/values.yaml".to_string()],
             always_down: false,
+            overwrite_lists: None,
+            overwrite_maps: None,
         };
 
         let result = upgrade_cmd.exec();
@@ -551,6 +598,8 @@ mod tests {
             id: Some(id.to_string()),
             value_files: vec![],
             always_down: false,
+            overwrite_lists: None,
+            overwrite_maps: None,
         };
 
         let result = upgrade_cmd.exec();
@@ -562,6 +611,96 @@ mod tests {
         assert!(result.is_err(), "Upgrade with a missing template directory should fail");
         assert!(directory_kept, "Previous install directory should survive a failed upgrade");
         assert!(marker_kept, "Previously rendered files should survive a failed upgrade");
+        Ok(())
+    }
+
+    /// Persists an application with the given merge options, runs an upgrade
+    /// with the given flags and returns the re-persisted application.
+    fn upgrade_with_merge_flags(
+        id: &str,
+        stored_options: MergeOptions,
+        overwrite_lists: Option<bool>,
+        overwrite_maps: Option<bool>,
+    ) -> anyhow::Result<PersistedApplication> {
+        let current_dir = current_dir()?;
+        let install_dir =
+            RelativePath::new("resources/test/simple/").to_logical_path(&current_dir);
+        let values_dir = RelativePath::new("resources/test/test_values/values.yaml")
+            .to_logical_path(&current_dir);
+        let values_str = values_dir.to_string_lossy().to_string();
+
+        let composer_directory = get_composer_directory()?;
+        let composer_id_directory = composer_directory.join(id);
+        fs::create_dir_all(&composer_id_directory)?;
+
+        let app = PersistedApplication {
+            id: id.to_string(),
+            version: "1.0.0".to_string(),
+            timestamp: 0,
+            state: ApplicationState::Running,
+            app_name: "Test App".to_string(),
+            compose_path: install_dir.to_string_lossy().to_string(),
+            value_files: vec![values_str],
+            merge_options: stored_options,
+        };
+        append_to_storage(&app)?;
+
+        let upgrade_cmd = Upgrade {
+            directory: install_dir,
+            id: Some(id.to_string()),
+            value_files: vec![],
+            always_down: false,
+            overwrite_lists,
+            overwrite_maps,
+        };
+        let result = upgrade_cmd.exec();
+        let app = get_application_by_id(id);
+        // Clean up before assertions in case they fail
+        clean_up_test_folder(id)?;
+        result?;
+        app
+    }
+
+    #[test]
+    #[serial]
+    fn test_upgrade_replays_persisted_merge_options() -> anyhow::Result<()> {
+        let stored = MergeOptions {
+            overwrite_lists: true,
+            overwrite_maps: false,
+        };
+        let app = upgrade_with_merge_flags("test_upgrade_replays_merge", stored, None, None)?;
+        assert_eq!(app.merge_options, stored);
+        Ok(())
+    }
+
+    #[test]
+    #[serial]
+    fn test_upgrade_flag_overrides_persisted_merge_options() -> anyhow::Result<()> {
+        let app = upgrade_with_merge_flags(
+            "test_upgrade_flag_overrides_merge",
+            MergeOptions::default(),
+            Some(true),
+            None,
+        )?;
+        assert!(app.merge_options.overwrite_lists);
+        assert!(!app.merge_options.overwrite_maps);
+        Ok(())
+    }
+
+    #[test]
+    #[serial]
+    fn test_upgrade_flag_false_reverts_persisted_merge_options() -> anyhow::Result<()> {
+        let stored = MergeOptions {
+            overwrite_lists: true,
+            overwrite_maps: true,
+        };
+        let app = upgrade_with_merge_flags(
+            "test_upgrade_flag_reverts_merge",
+            stored,
+            Some(false),
+            Some(false),
+        )?;
+        assert_eq!(app.merge_options, MergeOptions::default());
         Ok(())
     }
 }

@@ -4,7 +4,7 @@ use clap::Args;
 use std::path::Path;
 use std::time::{SystemTime, UNIX_EPOCH};
 
-use crate::utils::load_values::{get_value_files_as_refs, load_yaml_files};
+use crate::utils::load_values::{get_value_files_as_refs, load_yaml_files, MergeOptions};
 use crate::utils::storage::models::{ApplicationState, PersistedApplication};
 use crate::utils::storage::read_from::get_application_by_id;
 
@@ -56,7 +56,8 @@ impl Inspect {
             None
         } else {
             let refs = get_value_files_as_refs(&present_paths);
-            Some(load_yaml_files(&refs)?)
+            // Replay the merge strategy persisted at install time
+            Some(load_yaml_files(&refs, app.merge_options)?)
         };
 
         let output = if self.json {
@@ -75,6 +76,20 @@ fn state_label(state: &ApplicationState) -> &'static str {
         ApplicationState::Running => "RUNNING",
         ApplicationState::Error => "ERROR",
     }
+}
+
+fn merge_summary(options: &MergeOptions) -> String {
+    let lists = if options.overwrite_lists {
+        "overwrite"
+    } else {
+        "append"
+    };
+    let maps = if options.overwrite_maps {
+        "overwrite"
+    } else {
+        "deep-merge"
+    };
+    format!("lists={}, maps={}", lists, maps)
 }
 
 fn humanised_installed(timestamp: i64) -> String {
@@ -135,6 +150,10 @@ fn render_inspect_human(
         humanised_installed(app.timestamp)
     ));
     out.push_str(&format!("  Compose path:  {}\n", app.compose_path));
+    out.push_str(&format!(
+        "  Values merge:  {}\n",
+        merge_summary(&app.merge_options)
+    ));
     out.push('\n');
 
     out.push_str(&format!("VALUE FILES ({})\n", value_files.len()));
@@ -189,6 +208,10 @@ fn render_inspect_json(
             "timestamp": app.timestamp,
             "installed_at": iso_installed(app.timestamp),
             "compose_path": app.compose_path,
+            "merge_options": {
+                "overwrite_lists": app.merge_options.overwrite_lists,
+                "overwrite_maps": app.merge_options.overwrite_maps,
+            },
         },
         "value_files": files,
         "merged_values": merged_json,
@@ -215,6 +238,7 @@ mod tests {
             app_name: id.to_string(),
             compose_path: format!("/tmp/{}/docker-compose.yaml", id),
             value_files,
+            merge_options: MergeOptions::default(),
         }
     }
 
@@ -261,6 +285,27 @@ mod tests {
         assert!(out.contains("Status:        RUNNING"), "missing status row:\n{}", out);
         assert!(out.contains("1. /tmp/base.yaml"), "missing numbered value file:\n{}", out);
         assert!(out.contains("  hello: true"), "merged values not indented:\n{}", out);
+        assert!(
+            out.contains("Values merge:  lists=append, maps=deep-merge"),
+            "missing values merge row:\n{}",
+            out
+        );
+        Ok(())
+    }
+
+    #[test]
+    fn test_render_inspect_shows_overwrite_merge_strategy() -> anyhow::Result<()> {
+        let mut app = sample_app("my-app", vec![]);
+        app.merge_options = MergeOptions {
+            overwrite_lists: true,
+            overwrite_maps: true,
+        };
+        let out = render_inspect_human(&app, &[], None)?;
+        assert!(
+            out.contains("Values merge:  lists=overwrite, maps=overwrite"),
+            "missing overwrite merge row:\n{}",
+            out
+        );
         Ok(())
     }
 
@@ -316,6 +361,8 @@ mod tests {
         assert_eq!(parsed["value_files"][0]["missing"], false);
         assert_eq!(parsed["merged_values"]["hello"], true);
         assert_eq!(parsed["merged_values"]["world"], "string");
+        assert_eq!(parsed["application"]["merge_options"]["overwrite_lists"], false);
+        assert_eq!(parsed["application"]["merge_options"]["overwrite_maps"], false);
         Ok(())
     }
 

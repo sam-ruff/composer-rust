@@ -244,6 +244,7 @@ fn compose_pull_with(runner: &impl CommandRunner, path: &str) {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::utils::load_values::MergeOptions;
     use crate::utils::storage::models::PersistedApplication;
     use crate::utils::storage::read_from::get_application_by_id;
     use crate::utils::storage::write_to_storage::append_to_storage;
@@ -353,6 +354,7 @@ mod tests {
             app_name: id.to_string(),
             compose_path: id.to_string(),
             value_files: vec![],
+            merge_options: MergeOptions::default(),
         })?;
         let file = temp_compose_file(COMPOSE_WITH_SERVICES)?;
         let mut runner = MockCommandRunner::new();

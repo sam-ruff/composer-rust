@@ -81,3 +81,82 @@ impl Cli {
         Ok(())
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn parse_upgrade(args: &[&str]) -> Upgrade {
+        let cli = Cli::try_parse_from(args).expect("args should parse");
+        match cli.cmd {
+            Cmd::Upgrade(upgrade) => upgrade,
+            other => panic!("expected upgrade command, got {:?}", other),
+        }
+    }
+
+    fn parse_install(args: &[&str]) -> Install {
+        let cli = Cli::try_parse_from(args).expect("args should parse");
+        match cli.cmd {
+            Cmd::Install(install) => install,
+            other => panic!("expected install command, got {:?}", other),
+        }
+    }
+
+    #[test]
+    fn test_install_overwrite_flags_default_off() {
+        let install = parse_install(&["composer", "install", "some/dir"]);
+        assert!(!install.overwrite_lists);
+        assert!(!install.overwrite_maps);
+    }
+
+    #[test]
+    fn test_install_overwrite_flags_accept_kebab_alias() {
+        let install = parse_install(&[
+            "composer",
+            "install",
+            "some/dir",
+            "--overwrite-lists",
+            "--overwrite_maps",
+        ]);
+        assert!(install.overwrite_lists);
+        assert!(install.overwrite_maps);
+    }
+
+    #[test]
+    fn test_upgrade_overwrite_flags_absent_are_none() {
+        let upgrade = parse_upgrade(&["composer", "upgrade", "some/dir", "-i", "app"]);
+        assert_eq!(upgrade.overwrite_lists, None);
+        assert_eq!(upgrade.overwrite_maps, None);
+    }
+
+    #[test]
+    fn test_upgrade_bare_overwrite_flag_is_true() {
+        let upgrade = parse_upgrade(&[
+            "composer",
+            "upgrade",
+            "--overwrite_lists",
+            "some/dir",
+            "-i",
+            "app",
+        ]);
+        assert_eq!(upgrade.overwrite_lists, Some(true));
+        assert_eq!(upgrade.overwrite_maps, None);
+        // The positional directory must not be swallowed as the flag value
+        assert_eq!(upgrade.directory, std::path::PathBuf::from("some/dir"));
+    }
+
+    #[test]
+    fn test_upgrade_overwrite_flag_equals_false() {
+        let upgrade = parse_upgrade(&[
+            "composer",
+            "upgrade",
+            "some/dir",
+            "-i",
+            "app",
+            "--overwrite_lists=false",
+            "--overwrite-maps=true",
+        ]);
+        assert_eq!(upgrade.overwrite_lists, Some(false));
+        assert_eq!(upgrade.overwrite_maps, Some(true));
+    }
+}
