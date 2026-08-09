@@ -1,8 +1,22 @@
-use minijinja::{Environment, ErrorKind};
+use minijinja::value::ValueKind;
+use minijinja::{Environment, ErrorKind, Output, State};
 use serde_yaml::Value;
 use std::fs::File;
 use std::io::Read;
 use std::path::Path;
+
+/// Renders booleans as lowercase `true`/`false`; minijinja 2.22+ defaults to
+/// Python-style `True`/`False`, which would change existing rendered output.
+pub fn lowercase_bool_formatter(
+    out: &mut Output,
+    state: &State,
+    value: &minijinja::value::Value,
+) -> Result<(), minijinja::Error> {
+    if value.kind() == ValueKind::Bool {
+        return Ok(out.write_str(if value.is_true() { "true" } else { "false" })?);
+    }
+    minijinja::escape_formatter(out, state, value)
+}
 
 /// A custom filter for required
 /// Hello {{ world_variable | required }}
@@ -38,6 +52,7 @@ pub fn render_template(path: &str, values_yaml: Value) -> anyhow::Result<String>
 
     // Create a Jinja environment
     let mut env = Environment::new();
+    env.set_formatter(lowercase_bool_formatter);
 
     // Get the directory of the template file
     let template_dir = Path::new(path)
