@@ -29,6 +29,7 @@ impl Default for MiniJinjaRenderer {
 impl TemplateRenderer for MiniJinjaRenderer {
     fn render(&self, template_str: &str, context: &Value) -> Result<String> {
         let mut env = Environment::new();
+        env.set_formatter(crate::utils::template::lowercase_bool_formatter);
 
         env.add_template("inline", template_str)
             .with_context(|| format!("Failed to parse template: {}", template_str))?;
@@ -273,6 +274,21 @@ message: "{{ undefined_var | default('fallback') }}"
         assert_eq!(
             resolved.get("message").unwrap(),
             &Value::String("fallback".to_string())
+        );
+    }
+
+    #[test]
+    fn test_boolean_reference_renders_lowercase() {
+        let yaml = r#"
+enabled: true
+flag: "{{ enabled }}"
+"#;
+        let values: Value = from_str(yaml).unwrap();
+        let resolved = resolve_value_references(values).unwrap();
+
+        assert_eq!(
+            resolved.get("flag").unwrap(),
+            &Value::String("true".to_string())
         );
     }
 
