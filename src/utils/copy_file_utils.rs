@@ -89,6 +89,38 @@ mod tests {
 
     #[test]
     #[serial]
+    fn test_get_composer_directory_defaults_to_home_dot_composer() -> anyhow::Result<()> {
+        std::env::remove_var("COMPOSER_HOME");
+        let expected = dirs::home_dir()
+            .with_context(|| "home_dir must resolve on the test host")?
+            .join(".composer");
+        assert_eq!(get_composer_directory()?, expected);
+        Ok(())
+    }
+
+    #[test]
+    #[serial]
+    fn test_get_composer_directory_ignores_empty_composer_home() -> anyhow::Result<()> {
+        std::env::set_var("COMPOSER_HOME", "");
+        let result = get_composer_directory();
+        std::env::remove_var("COMPOSER_HOME");
+        let expected = dirs::home_dir()
+            .with_context(|| "home_dir must resolve on the test host")?
+            .join(".composer");
+        assert_eq!(result?, expected);
+        Ok(())
+    }
+
+    #[test]
+    #[serial]
+    fn test_get_composer_directory_honours_composer_home() -> anyhow::Result<()> {
+        let guard = crate::utils::test_utils::ComposerHomeGuard::new()?;
+        assert_eq!(get_composer_directory()?, guard.path());
+        Ok(())
+    }
+
+    #[test]
+    #[serial]
     fn test_copy_files_simple() -> anyhow::Result<()> {
         trace!("Running test_copy_files_simple.");
         let current_dir = current_dir()?;
