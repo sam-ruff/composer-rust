@@ -10,7 +10,7 @@ permissions:
 
 jobs:
   test:
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, linux, large, dedicated]
 
     steps:
       - name: Checkout
@@ -35,7 +35,7 @@ jobs:
 
   release:
     needs: test
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, linux, small]
 
     steps:
       - name: Checkout
@@ -82,18 +82,23 @@ jobs:
 
   build:
     needs: release
-    runs-on: ${{ matrix.os }}
+    runs-on: ${{ matrix.runner }}
     if: ((github.ref == 'refs/heads/master')) && (!contains(github.event.head_commit.message, 'chore:'))
     strategy:
       matrix:
         include:
           - os: ubuntu-latest
+            runner: [self-hosted, linux, large, dedicated]
             target: x86_64-unknown-linux-gnu
           - os: ubuntu-latest
+            runner: [self-hosted, linux, large, dedicated]
             target: x86_64-unknown-linux-musl
           - os: macos-latest
+            # Queues until a local macOS runner is available.
+            runner: [self-hosted, macOS, X64, large, dedicated]
             target: x86_64-apple-darwin
           - os: windows-latest
+            runner: [self-hosted, windows, large, dedicated]
             target: x86_64-pc-windows-msvc
 
     steps:
@@ -176,7 +181,7 @@ jobs:
 
   create-rpm:
     needs: release
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, linux, large, dedicated]
     if: ((github.ref == 'refs/heads/master')) && (!contains(github.event.head_commit.message, 'chore:'))
     steps:
       - uses: actions/checkout@v4
@@ -248,7 +253,7 @@ jobs:
 
   create-deb:
     needs: release
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, linux, large, dedicated]
     if: ((github.ref == 'refs/heads/master')) && (!contains(github.event.head_commit.message, 'chore:'))
     steps:
       - uses: actions/checkout@v4
