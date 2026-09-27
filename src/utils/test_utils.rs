@@ -66,7 +66,7 @@ pub fn backup_composer_config() -> anyhow::Result<(PathBuf, PathBuf)> {
     let composer_directory = get_composer_directory()?;
     let composer_json_config: PathBuf = composer_directory.join("config.json");
     if !composer_json_config.exists() {
-        // If composer config directory does not exist create it
+        fs::create_dir_all(&composer_directory)?;
         create_file_with_contents(&composer_json_config, "[]")?;
     }
     let composer_json_config_backup: PathBuf = composer_directory.join("backup-config.json");
