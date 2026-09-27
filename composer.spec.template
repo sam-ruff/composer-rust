@@ -1,3 +1,6 @@
+# The release profile strips symbols, so there is nothing for a debuginfo package
+%global debug_package %{nil}
+
 Name:        ${APP_NAME}
 Version:     ${APP_VERSION}
 Release:     1%{?dist}

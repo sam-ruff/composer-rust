@@ -85,6 +85,7 @@ jobs:
     runs-on: ${{ matrix.runner }}
     if: ((github.ref == 'refs/heads/master')) && (!contains(github.event.head_commit.message, 'chore:'))
     strategy:
+      fail-fast: false
       matrix:
         include:
           - os: ubuntu-latest
@@ -93,12 +94,9 @@ jobs:
           - os: ubuntu-latest
             runner: [self-hosted, linux, large, dedicated]
             target: x86_64-unknown-linux-musl
-          - os: macos-latest
-            # Queues until a local macOS runner is available.
-            runner: [self-hosted, macOS, X64, large, dedicated]
-            target: x86_64-apple-darwin
+          # No macOS runner exists in the self-hosted pool, so x86_64-apple-darwin is not built.
           - os: windows-latest
-            runner: [self-hosted, windows, large, dedicated]
+            runner: [self-hosted, windows-large]
             target: x86_64-pc-windows-msvc
 
     steps:
@@ -121,10 +119,10 @@ jobs:
           target: x86_64-unknown-linux-musl
           override: true
 
-      - name: Setup zig for cross-compile (for musl targets)
+      - name: Install musl toolchain
         if: endsWith(matrix.target, 'linux-musl')
         shell: bash
-        run: sudo apt-get -y install musl && sudo snap install zig --beta --classic
+        run: sudo apt-get update && sudo apt-get -y install musl-tools
 
 
       - name: Download Version File
@@ -141,21 +139,9 @@ jobs:
         run: |
           sed -i.bak -e 's/^version = "0\.0\.0"/version = "${{ env.RELEASE_VERSION }}"/' Cargo.toml && rm -f Cargo.toml.bak
 
-      - name: Set target for mac
-        shell: bash
-        if: endsWith(matrix.target, 'apple-darwin')
-        run: |
-          rustup target add x86_64-apple-darwin
-
       - name: Build release binary
         shell: bash
-        run: |
-          if [[ "${{ matrix.target }}" == "x86_64-unknown-linux-musl" ]]; then
-            cargo install cargo-zigbuild
-            cargo zigbuild --release --target ${{ matrix.target }}
-          else
-            cargo build --release --target ${{ matrix.target }}
-          fi
+        run: cargo build --release --target ${{ matrix.target }}
 
       - name: Set file extension for Windows
         shell: bash
