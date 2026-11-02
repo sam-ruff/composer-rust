@@ -10,7 +10,7 @@ permissions:
 
 jobs:
   test:
-    runs-on: [self-hosted, linux, large, dedicated]
+    runs-on: [self-hosted, sophie]
 
     steps:
       - name: Checkout
@@ -35,7 +35,7 @@ jobs:
 
   release:
     needs: test
-    runs-on: [self-hosted, linux, small]
+    runs-on: [self-hosted, sophie]
 
     steps:
       - name: Checkout
@@ -89,14 +89,14 @@ jobs:
       matrix:
         include:
           - os: ubuntu-latest
-            runner: [self-hosted, linux, large, dedicated]
+            runner: [self-hosted, sophie]
             target: x86_64-unknown-linux-gnu
           - os: ubuntu-latest
-            runner: [self-hosted, linux, large, dedicated]
+            runner: [self-hosted, sophie]
             target: x86_64-unknown-linux-musl
           # No macOS runner exists in the self-hosted pool, so x86_64-apple-darwin is not built.
           - os: windows-latest
-            runner: [self-hosted, windows-large]
+            runner: [self-hosted, Windows, X64]
             target: x86_64-pc-windows-msvc
 
     steps:
@@ -167,7 +167,7 @@ jobs:
 
   create-rpm:
     needs: release
-    runs-on: [self-hosted, linux, large, dedicated]
+    runs-on: [self-hosted, sophie]
     if: ((github.ref == 'refs/heads/master')) && (!contains(github.event.head_commit.message, 'chore:'))
     steps:
       - uses: actions/checkout@v4
@@ -239,7 +239,7 @@ jobs:
 
   create-deb:
     needs: release
-    runs-on: [self-hosted, linux, large, dedicated]
+    runs-on: [self-hosted, sophie]
     if: ((github.ref == 'refs/heads/master')) && (!contains(github.event.head_commit.message, 'chore:'))
     steps:
       - uses: actions/checkout@v4

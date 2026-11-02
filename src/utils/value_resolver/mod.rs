@@ -35,10 +35,10 @@ impl TemplateRenderer for MiniJinjaRenderer {
             .with_context(|| format!("Failed to parse template: {}", template_str))?;
 
         let template = env.get_template("inline")?;
-        let ctx = minijinja::value::Value::from_serialize(context);
+        let ctx = minijinja::value::Serde(context);
 
         template
-            .render(&ctx)
+            .render(ctx)
             .map_err(|e| anyhow!("Failed to render value reference '{}': {}", template_str, e))
     }
 }
