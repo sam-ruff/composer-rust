@@ -1,21 +1,54 @@
 use minijinja::value::ValueKind;
-use minijinja::{Environment, ErrorKind, Output, State};
+use minijinja::{AutoEscape, Environment, ErrorKind, Output, State};
 use serde_yaml::Value;
 use std::fs::File;
 use std::io::Read;
 use std::path::Path;
 
-/// Renders booleans as lowercase `true`/`false`; minijinja 2.22+ defaults to
+/// Renders booleans as lowercase `true`/`false`; minijinja 2.22+ (and 3) defaults to
 /// Python-style `True`/`False`, which would change existing rendered output.
+/// Sequences and maps keep the double-quoted strings of minijinja 2 (minijinja 3
+/// switched to single quotes), so `{{ list }}` in a JSON template stays valid JSON.
 pub fn lowercase_bool_formatter(
     out: &mut Output,
-    state: &State,
+    state: &mut State,
     value: &minijinja::value::Value,
 ) -> Result<(), minijinja::Error> {
-    if value.kind() == ValueKind::Bool {
-        return Ok(out.write_str(if value.is_true() { "true" } else { "false" })?);
+    match value.kind() {
+        ValueKind::Bool => Ok(out.write_str(if value.is_true() { "true" } else { "false" })?),
+        ValueKind::Seq | ValueKind::Map if *state.auto_escape() == AutoEscape::None => {
+            Ok(write_double_quoted_repr(out, value)?)
+        }
+        _ => minijinja::escape_formatter(out, state, value),
     }
-    minijinja::escape_formatter(out, state, value)
+}
+
+/// Writes a value the way minijinja 2 printed it: strings use Rust debug quoting,
+/// collections recurse and other values keep minijinja's own representation.
+fn write_double_quoted_repr(out: &mut Output, value: &minijinja::value::Value) -> std::fmt::Result {
+    let items = || value.try_iter().into_iter().flatten().enumerate();
+    match value.kind() {
+        ValueKind::String => write!(out, "{:?}", value.as_str().unwrap_or_default()),
+        ValueKind::Seq | ValueKind::Iterable => {
+            out.write_str("[")?;
+            for (i, item) in items() {
+                out.write_str(if i == 0 { "" } else { ", " })?;
+                write_double_quoted_repr(out, &item)?;
+            }
+            out.write_str("]")
+        }
+        ValueKind::Map => {
+            out.write_str("{")?;
+            for (i, key) in items() {
+                out.write_str(if i == 0 { "" } else { ", " })?;
+                write_double_quoted_repr(out, &key)?;
+                out.write_str(": ")?;
+                write_double_quoted_repr(out, &value.get_item(&key).unwrap_or_default())?;
+            }
+            out.write_str("}")
+        }
+        _ => write!(out, "{:?}", value),
+    }
 }
 
 /// A custom filter for required
@@ -76,10 +109,10 @@ pub fn render_template(path: &str, values_yaml: Value) -> anyhow::Result<String>
     let template = env.get_template(template_key)?;
 
     // Convert the merged data to minijinja values
-    let ctx = minijinja::value::Value::from_serialize(&merged_values);
+    let ctx = minijinja::value::Serde(&merged_values);
 
     // Render the template with the input data
-    let rendered = template.render(&ctx).map_err(|e| {
+    let rendered = template.render(ctx).map_err(|e| {
         anyhow::anyhow!(
             "Failed to render template {}: due to an error in the template. Error: {}",
             path,
@@ -400,5 +433,27 @@ mod tests {
         Ok(())
     }
 
+    fn render_inline(template: &str, yaml: &str) -> anyhow::Result<String> {
+        let mut env = minijinja::Environment::new();
+        env.set_formatter(super::lowercase_bool_formatter);
+        let values: Value = serde_yaml::from_str(yaml)?;
+        Ok(env.render_str(template, minijinja::value::Serde(&values))?)
+    }
 
+    #[test]
+    fn test_collections_render_double_quoted_like_minijinja_2() -> anyhow::Result<()> {
+        let yaml = r#"{list: [a, "b\"c"], map: {k: [x, null, true, 1.5]}, flag: false}"#;
+        let output = render_inline("{{ list }} {{ map }} {{ flag }} {{ (1, 2) }}", yaml)?;
+        assert_eq!(r#"["a", "b\"c"] {"k": ["x", None, True, 1.5]} false [1, 2]"#, output);
+        Ok(())
+    }
+
+    #[test]
+    fn test_rendered_list_in_json_template_stays_valid_json() -> anyhow::Result<()> {
+        let template = r#"{"hosts": {{ hosts }}, "ports": {{ ports }}}"#;
+        let output = render_inline(template, "{hosts: [a, b], ports: [80, 443]}")?;
+        let parsed: serde_json::Value = serde_json::from_str(&output)?;
+        assert_eq!(serde_json::json!({"hosts": ["a", "b"], "ports": [80, 443]}), parsed);
+        Ok(())
+    }
 }

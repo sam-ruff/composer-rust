@@ -101,6 +101,10 @@ fn teardown_compose_files(runner: &impl CommandRunner, compose_files: &[String],
 
 impl Upgrade {
     pub fn exec(&self) -> anyhow::Result<()> {
+        self.exec_with(&RealCommandRunner)
+    }
+
+    pub(crate) fn exec_with(&self, runner: &impl CommandRunner) -> anyhow::Result<()> {
         trace!("Command: {:?}", self);
 
         let install_id = match &self.id {
@@ -173,13 +177,14 @@ impl Upgrade {
             &new_compose_files,
             &self.directory,
         );
-        teardown_compose_files(&RealCommandRunner, &teardown_files, install_id);
+        teardown_compose_files(runner, &teardown_files, install_id);
 
         // Remove the existing directory
         remove_dir_all(&composer_id_directory)?;
         info!("Upgrading application with ID: {}", install_id);
 
         add_application(
+            runner,
             install_id,
             &composer_id_directory,
             true,
@@ -200,7 +205,7 @@ mod tests {
     use crate::utils::storage::models::{ApplicationState, PersistedApplication};
     use crate::utils::storage::read_from::get_application_by_id;
     use crate::utils::storage::write_to_storage::append_to_storage;
-    use crate::utils::test_utils::clean_up_test_folder;
+    use crate::utils::test_utils::{clean_up_test_folder, expect_compose_up};
     use relative_path::RelativePath;
     use serial_test::serial;
     use std::env::current_dir;
@@ -444,7 +449,7 @@ mod tests {
             overwrite_maps: None,
         };
 
-        upgrade_cmd.exec()?;
+        upgrade_cmd.exec_with(&expect_compose_up(1))?;
 
         // Retrieve the application and check that its value_files have been updated
         let app = get_application_by_id(id)?;
@@ -500,7 +505,7 @@ mod tests {
             overwrite_maps: None,
         };
 
-        upgrade_cmd.exec()?;
+        upgrade_cmd.exec_with(&expect_compose_up(1))?;
 
         // Retrieve the application and check that its value_files have not changed
         let app = get_application_by_id(id)?;
@@ -653,7 +658,7 @@ mod tests {
             overwrite_lists,
             overwrite_maps,
         };
-        let result = upgrade_cmd.exec();
+        let result = upgrade_cmd.exec_with(&expect_compose_up(1));
         let app = get_application_by_id(id);
         // Clean up before assertions in case they fail
         clean_up_test_folder(id)?;

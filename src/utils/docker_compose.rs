@@ -86,11 +86,7 @@ fn build_compose_pull_args(path: &str) -> Vec<String> {
         .collect()
 }
 
-pub fn compose_up(path: &str, application_id: &str) -> anyhow::Result<()> {
-    compose_up_with(&RealCommandRunner, path, application_id)
-}
-
-fn compose_up_with(
+pub(crate) fn compose_up_with(
     runner: &impl CommandRunner,
     path: &str,
     application_id: &str,
@@ -232,11 +228,7 @@ pub fn silent_run(args: &[&str]) -> Command {
     cmd
 }
 
-pub fn compose_pull(path: &str) {
-    compose_pull_with(&RealCommandRunner, path)
-}
-
-fn compose_pull_with(runner: &impl CommandRunner, path: &str) {
+pub(crate) fn compose_pull_with(runner: &impl CommandRunner, path: &str) {
     info!("Always pull is enabled. Pulling latest images. Will ignore failures of local images.");
     runner.run_unbuffered(build_compose_pull_args(path));
 }

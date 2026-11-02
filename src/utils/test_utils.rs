@@ -1,5 +1,7 @@
 use crate::utils::copy_file_utils::get_composer_directory;
-use crate::utils::docker_compose::{compose_down_with, RealCommandRunner, COMPOSE_FILE_NAMES};
+use crate::utils::docker_compose::{
+    compose_down_with, MockCommandRunner, RealCommandRunner, COMPOSE_FILE_NAMES,
+};
 use crate::utils::walk::get_files_with_names;
 use anyhow::anyhow;
 use std::fs;
@@ -34,6 +36,24 @@ impl Drop for ComposerHomeGuard {
     fn drop(&mut self) {
         std::env::remove_var("COMPOSER_HOME");
     }
+}
+
+/// A runner that expects exactly `times` successful `docker compose -f <file>
+/// up` calls and rejects any other command, so install and upgrade tests
+/// verify the compose invocation without needing a docker daemon.
+pub fn expect_compose_up(times: usize) -> MockCommandRunner {
+    let mut runner = MockCommandRunner::new();
+    runner
+        .expect_run_unbuffered()
+        .withf(|args| {
+            args.len() == 7
+                && args[..3] == ["docker", "compose", "-f"]
+                && args[3].ends_with("docker-compose.jinja2")
+                && args[4..] == ["up", "-d", "--remove-orphans"]
+        })
+        .times(times)
+        .return_const(0);
+    runner
 }
 
 #[allow(dead_code)]

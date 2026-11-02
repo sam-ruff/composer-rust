@@ -4,7 +4,9 @@ use crate::utils::load_values::{get_value_files_as_refs, load_yaml_files, MergeO
 use crate::utils::walk::{get_files_with_extensions, get_files_with_names};
 use anyhow::anyhow;
 
-use crate::utils::docker_compose::{compose_pull, compose_up, COMPOSE_FILE_NAMES};
+use crate::utils::docker_compose::{
+    compose_pull_with, compose_up_with, CommandRunner, RealCommandRunner, COMPOSE_FILE_NAMES,
+};
 use crate::utils::storage::app_yaml::load_app_yaml;
 use crate::utils::storage::models::{ApplicationState, PersistedApplication};
 use crate::utils::storage::write_to_storage::append_to_storage;
@@ -34,6 +36,10 @@ pub struct Install {
 
 impl Install {
     pub fn exec(&self) -> anyhow::Result<()> {
+        self.exec_with(&RealCommandRunner)
+    }
+
+    pub(crate) fn exec_with(&self, runner: &impl CommandRunner) -> anyhow::Result<()> {
         trace!("Command: {:?}", self);
         let readable_id = &Self::get_readable_id();
         let install_id: &String = self.id.as_ref().unwrap_or(readable_id);
@@ -47,6 +53,7 @@ impl Install {
         info!("Installing application with ID: {}", install_id);
 
         add_application(
+            runner,
             install_id,
             &composer_id_directory,
             false,
@@ -106,6 +113,7 @@ fn verify_either_file_exists(file_names: &[&str], directory: &Path) -> anyhow::R
 }
 
 pub fn add_application(
+    runner: &impl CommandRunner,
     install_id: &String,
     composer_id_directory: &PathBuf,
     is_upgrade: bool,
@@ -194,10 +202,10 @@ pub fn add_application(
             info!("Always pull is enabled. Pulling latest docker images.");
             let compose_path = composer_id_directory.join(&compose_file);
             let dir_str = compose_path.to_str().unwrap();
-            compose_pull(dir_str);
+            compose_pull_with(runner, dir_str);
         }
         if !no_run {
-            compose_up(&compose_file, install_id)?;
+            compose_up_with(runner, &compose_file, install_id)?;
         }
     }
 
@@ -221,7 +229,7 @@ mod tests {
     use serial_test::serial;
     use std::env::current_dir;
     use std::path::PathBuf;
-    use crate::utils::test_utils::clean_up_test_folder;
+    use crate::utils::test_utils::{clean_up_test_folder, expect_compose_up};
 
     #[test]
     #[serial]
@@ -336,7 +344,7 @@ mod tests {
             overwrite_maps: false,
         };
         // Call exec once, so that the folder is created
-        test_install_cmd.exec()?;
+        test_install_cmd.exec_with(&expect_compose_up(1))?;
         // Call it again, this time it should fail
         let err = test_install_cmd.exec().unwrap_err();
         let actual_err = err.to_string();
@@ -364,7 +372,7 @@ mod tests {
             overwrite_lists: false,
             overwrite_maps: false,
         };
-        test_install_cmd.exec()?;
+        test_install_cmd.exec_with(&expect_compose_up(1))?;
 
         // Read the created app
         let app = get_application_by_id(id).unwrap();
@@ -395,7 +403,7 @@ mod tests {
             overwrite_lists: false,
             overwrite_maps: false,
         };
-        test_install_cmd.exec()?;
+        test_install_cmd.exec_with(&expect_compose_up(1))?;
 
         let composer_id_directory = get_composer_directory()?.join(id);
         let ignored_file_copied = composer_id_directory.join(".ignoreme").exists();
@@ -435,7 +443,7 @@ mod tests {
             overwrite_lists: false,
             overwrite_maps: false,
         };
-        test_install_cmd.exec()?;
+        test_install_cmd.exec_with(&expect_compose_up(1))?;
 
         let composer_id_directory = get_composer_directory()?.join(id);
         let ignoreme_copied = composer_id_directory.join(".ignoreme").exists();
@@ -504,7 +512,7 @@ mod tests {
             overwrite_lists: false,
             overwrite_maps: false,
         };
-        test_install_cmd.exec()?;
+        test_install_cmd.exec_with(&expect_compose_up(1))?;
         // Read the created app
         let app = get_application_by_id(id)?;
         // Clean up the app after test
@@ -530,7 +538,7 @@ mod tests {
             overwrite_lists: true,
             overwrite_maps: false,
         };
-        test_install_cmd.exec()?;
+        test_install_cmd.exec_with(&expect_compose_up(1))?;
         let app = get_application_by_id(id)?;
         clean_up_test_folder(id)?;
         assert!(app.merge_options.overwrite_lists);
