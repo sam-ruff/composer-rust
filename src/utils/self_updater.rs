@@ -545,4 +545,55 @@ mod tests {
         }];
         assert_eq!(select_asset(&assets, "x86_64-unknown-linux-gnu"), None);
     }
+
+    /// Serves one request on a loopback port with a chunked body, like GitHub does,
+    /// and returns the base URL.
+    fn serve_chunked_once(chunks: Vec<&'static [u8]>) -> String {
+        use std::io::{BufRead, BufReader, Write};
+        let listener = std::net::TcpListener::bind("127.0.0.1:0").expect("bind loopback");
+        let url = format!("http://{}", listener.local_addr().expect("local addr"));
+        std::thread::spawn(move || {
+            let (stream, _) = listener.accept().expect("accept");
+            let mut reader = BufReader::new(stream.try_clone().expect("clone stream"));
+            let mut line = String::new();
+            while reader.read_line(&mut line).is_ok_and(|n| n > 0) && line != "\r\n" {
+                line.clear();
+            }
+            let mut stream = stream;
+            let _ = stream.write_all(b"HTTP/1.1 200 OK\r\nTransfer-Encoding: chunked\r\n\r\n");
+            for chunk in chunks {
+                let _ = write!(stream, "{:x}\r\n", chunk.len());
+                let _ = stream.write_all(chunk);
+                let _ = stream.write_all(b"\r\n");
+            }
+            let _ = stream.write_all(b"0\r\n\r\n");
+        });
+        url
+    }
+
+    #[test]
+    fn github_api_reads_chunked_release_and_download_responses() -> anyhow::Result<()> {
+        let api = GithubReleaseApi {
+            latest_release_url: serve_chunked_once(vec![
+                br#"{"tag_name": "v3.12.0", "assets": [{"name": "composer-3.12.0-ubuntu"#,
+                br#"-latest-x86_64-unknown-linux-gnu", "browser_download_url": "https://x/gnu"}]}"#,
+            ]),
+        };
+        let release = api.latest_release()?;
+        assert_eq!(release.version, "v3.12.0");
+        assert_eq!(release.assets, vec![gnu_asset_at("3.12.0", "https://x/gnu")]);
+
+        let dir = tempfile::tempdir()?;
+        let dest = dir.path().join("composer-new");
+        api.download(&serve_chunked_once(vec![b"\x7fELF", b"binary-body"]), &dest)?;
+        assert_eq!(std::fs::read(&dest)?, b"\x7fELFbinary-body");
+        Ok(())
+    }
+
+    fn gnu_asset_at(version: &str, url: &str) -> ReleaseAsset {
+        ReleaseAsset {
+            download_url: url.to_string(),
+            ..gnu_asset(version)
+        }
+    }
 }
