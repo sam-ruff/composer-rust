@@ -436,6 +436,7 @@ mod tests {
     fn render_inline(template: &str, yaml: &str) -> anyhow::Result<String> {
         let mut env = minijinja::Environment::new();
         env.set_formatter(super::lowercase_bool_formatter);
+        env.add_filter("required", super::required);
         let values: Value = serde_yaml::from_str(yaml)?;
         Ok(env.render_str(template, minijinja::value::Serde(&values))?)
     }
@@ -454,6 +455,27 @@ mod tests {
         let output = render_inline(template, "{hosts: [a, b], ports: [80, 443]}")?;
         let parsed: serde_json::Value = serde_json::from_str(&output)?;
         assert_eq!(serde_json::json!({"hosts": ["a", "b"], "ports": [80, 443]}), parsed);
+        Ok(())
+    }
+
+    #[test]
+    fn test_required_still_rejects_undefined_values_that_length_accepts() -> anyhow::Result<()> {
+        // minijinja 3.1 follows Jinja2 and treats undefined values as empty in `length`,
+        // so a misspelt key no longer fails there; `required` must keep rejecting it.
+        assert_eq!("0", render_inline("{{ missing | length }}", "{}")?);
+        let error = render_inline("{{ missing | required }}", "{}").unwrap_err();
+        assert!(error.to_string().contains("Value marked as 'required' must be present"));
+        assert_eq!("set", render_inline("{{ present | required }}", "{present: set}")?);
+        Ok(())
+    }
+
+    #[test]
+    fn test_filters_follow_jinja2_semantics_from_minijinja_3_1() -> anyhow::Result<()> {
+        let yaml = "{mixed: [true, 0, 2, false], ports: {http: 80, https: 443}, image: a-b-c}";
+        assert_eq!("a_b-c", render_inline("{{ image | replace('-', '_', 1) }}", yaml)?);
+        assert_eq!("[0, False, True, 2]", render_inline("{{ mixed | sort }}", yaml)?);
+        assert_eq!("https", render_inline("{{ ports | last }}", yaml)?);
+        assert_eq!(r#"["https", "http"]"#, render_inline("{{ ports | reverse | list }}", yaml)?);
         Ok(())
     }
 }
