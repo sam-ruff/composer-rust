@@ -135,4 +135,20 @@ mod tests {
         let refs = extractor.extract_references("{{ var1.item2 }}");
         assert_eq!(refs, vec!["var1.item2"]);
     }
+
+    #[test]
+    fn test_extract_adjacent_references_with_chained_filters() {
+        // Guards the capture offsets of back-to-back expressions with filter chains.
+        let extractor = MiniJinjaReferenceExtractor::new();
+        let refs = extractor.extract_references("{{a|upper}}{{ b.c | default('x') | lower }}{{d}}");
+        assert_eq!(refs, vec!["a", "b.c", "d"]);
+    }
+
+    #[test]
+    fn test_extract_skips_invalid_identifiers() {
+        let extractor = MiniJinjaReferenceExtractor::new();
+        let template = "{{ 1abc }} {{ ok.v2 }} {{ .bad }}";
+        assert_eq!(extractor.extract_references(template), vec!["ok.v2"]);
+        assert!(extractor.contains_template(template));
+    }
 }
