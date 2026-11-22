@@ -126,6 +126,24 @@ mod tests {
         assert!(actual.is_empty());
     }
 
+    #[cfg(unix)]
+    #[test]
+    fn test_walk_does_not_follow_symlink_loops() -> anyhow::Result<()> {
+        let dir = tempfile::tempdir()?;
+        let nested = dir.path().join("app");
+        std::fs::create_dir(&nested)?;
+        std::fs::write(nested.join("docker-compose.jinja2"), "")?;
+        // A link back to the walk root must neither loop nor duplicate files.
+        std::os::unix::fs::symlink(dir.path(), nested.join("loop"))?;
+        let root = dir.path().to_str().unwrap();
+        let by_ext = get_files_with_extensions(root, &["jinja2"]);
+        assert_eq!(by_ext.len(), 1);
+        assert!(by_ext[0].ends_with("app/docker-compose.jinja2"));
+        let by_name = get_files_with_names(root, &["docker-compose.jinja2"]);
+        assert_eq!(by_name, by_ext);
+        Ok(())
+    }
+
     fn get_relative_files(files: Vec<String>, base_dir: &PathBuf) -> Vec<String> {
         files
             .into_iter()
